@@ -1,0 +1,361 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-dark mb-0">
+      <i class="fas fa-credit-card me-2"></i>Record Payment
+    </h1>
+    <a href="/payments" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-2"></i>Back to Payments
+    </a>
+  </div>
+
+  <!-- Success/Error Messages -->
+  <% if (messages.error && messages.error.length > 0) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <%= messages.error.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+
+  <!-- Payment Form -->
+  <div class="row">
+    <div class="col-lg-10 mx-auto">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white border-bottom">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>Payment Details
+          </h5>
+        </div>
+        <div class="card-body">
+          <form action="/payments" method="POST" id="paymentForm">
+            <!-- Invoice Selection -->
+            <div class="row">
+              <div class="col-md-12 mb-4">
+                <label for="invoiceId" class="form-label">Invoice <span class="text-danger">*</span></label>
+                <select class="form-select" id="invoiceId" name="invoiceId" required>
+                  <option value="">Select an invoice to pay...</option>
+                  <% invoices.forEach(invoice => { %>
+                    <option value="<%= invoice.id %>" 
+                            <%= selectedInvoice && selectedInvoice.id == invoice.id ? 'selected' : '' %>
+                            data-total-amount="<%= invoice.totalAmount %>"
+                            data-balance="<%= invoice.balanceAmount %>">
+                      <%= invoice.invoiceNumber %> - 
+                      <% if (invoice.lease && invoice.lease.property) { %>
+                        <%= invoice.lease.property.name || invoice.lease.property.address %>
+                      <% } else { %>
+                        General Invoice
+                      <% } %>
+                      (Due: <%= new Date(invoice.dueDate).toLocaleDateString() %>, 
+                       Balance: $<%= new Intl.NumberFormat().format(invoice.balanceAmount) %>)
+                    </option>
+                  <% }) %>
+                </select>
+                <div class="form-text">Select the invoice this payment applies to</div>
+              </div>
+            </div>
+
+            <!-- Invoice Details Display -->
+            <div id="invoiceDetails" class="mb-4" style="display: none;">
+              <div class="card bg-light">
+                <div class="card-body">
+                  <h6 class="card-title">
+                    <i class="fas fa-file-invoice me-2"></i>Invoice Details
+                  </h6>
+                  <div class="row">
+                    <div class="col-md-3">
+                      <strong>Total Amount:</strong>
+                      <div class="h6 text-primary" id="invoiceTotal">$0.00</div>
+                    </div>
+                    <div class="col-md-3">
+                      <strong>Already Paid:</strong>
+                      <div class="h6 text-success" id="invoicePaid">$0.00</div>
+                    </div>
+                    <div class="col-md-3">
+                      <strong>Balance Due:</strong>
+                      <div class="h6 text-danger" id="invoiceBalance">$0.00</div>
+                    </div>
+                    <div class="col-md-3">
+                      <strong>Due Date:</strong>
+                      <div class="h6" id="invoiceDueDate">-</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Payment Information -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-dollar-sign me-2"></i>Payment Information
+            </h6>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="amount" class="form-label">Payment Amount <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="amount" name="amount" 
+                         placeholder="0.00" step="0.01" min="0.01" required>
+                </div>
+                <div class="form-text">Amount being paid (cannot exceed balance due)</div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="paymentDate" class="form-label">Payment Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="paymentDate" name="paymentDate" 
+                       value="<%= new Date().toISOString().split('T')[0] %>" required>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="paymentMethod" class="form-label">Payment Method <span class="text-danger">*</span></label>
+                <select class="form-select" id="paymentMethod" name="paymentMethod" required>
+                  <option value="credit_card">Credit Card</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                  <option value="check">Check</option>
+                  <option value="cash">Cash</option>
+                  <option value="money_order">Money Order</option>
+                  <option value="online">Online Payment</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="transactionId" class="form-label">Transaction ID</label>
+                <input type="text" class="form-control" id="transactionId" name="transactionId" 
+                       placeholder="External transaction reference">
+                <div class="form-text">Stripe ID, bank reference, etc.</div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="checkNumber" class="form-label">Check Number</label>
+                <input type="text" class="form-control" id="checkNumber" name="checkNumber" 
+                       placeholder="Check number (if applicable)">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="description" class="form-label">Description</label>
+                <input type="text" class="form-control" id="description" name="description" 
+                       placeholder="Brief description of payment">
+              </div>
+            </div>
+
+            <!-- Processing Fee -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="processingFee" class="form-label">Processing Fee</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="processingFee" name="processingFee" 
+                         placeholder="0.00" step="0.01" min="0">
+                </div>
+                <div class="form-text">Fee charged by payment processor</div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="alert alert-info">
+                  <i class="fas fa-calculator me-2"></i>
+                  <strong>Net Amount:</strong> <span id="netAmount">$0.00</span>
+                  <div class="form-text">Payment amount minus processing fee</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick Amount Buttons -->
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label class="form-label">Quick Amount Selection</label>
+                <div class="btn-group w-100" role="group" id="quickAmountButtons">
+                  <button type="button" class="btn btn-outline-primary" onclick="setFullBalance()">
+                    Pay Full Balance
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" onclick="setPartialAmount(0.5)">
+                    Pay 50%
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" onclick="setPartialAmount(0.25)">
+                    Pay 25%
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-sticky-note me-2"></i>Additional Information
+            </h6>
+
+            <div class="mb-3">
+              <label for="notes" class="form-label">Notes</label>
+              <textarea class="form-control" id="notes" name="notes" rows="3" 
+                        placeholder="Any additional notes about this payment..."></textarea>
+            </div>
+
+            <!-- Form Actions -->
+            <hr class="my-4">
+            <div class="d-flex justify-content-between">
+              <a href="/payments" class="btn btn-outline-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+              </a>
+              <button type="submit" class="btn btn-success">
+                <i class="fas fa-save me-2"></i>Record Payment
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('paymentForm');
+  const invoiceSelect = document.getElementById('invoiceId');
+  const amountInput = document.getElementById('amount');
+  const processingFeeInput = document.getElementById('processingFee');
+  const paymentMethodSelect = document.getElementById('paymentMethod');
+  const checkNumberInput = document.getElementById('checkNumber');
+  const transactionIdInput = document.getElementById('transactionId');
+  const invoiceDetailsDiv = document.getElementById('invoiceDetails');
+
+  // Current invoice data
+  let currentInvoice = null;
+
+  // Invoice selection change
+  invoiceSelect.addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    
+    if (selectedOption.value) {
+      currentInvoice = {
+        id: selectedOption.value,
+        totalAmount: parseFloat(selectedOption.dataset.totalAmount),
+        balanceAmount: parseFloat(selectedOption.dataset.balance)
+      };
+      
+      showInvoiceDetails();
+      updateQuickButtons();
+    } else {
+      currentInvoice = null;
+      hideInvoiceDetails();
+    }
+  });
+
+  function showInvoiceDetails() {
+    if (!currentInvoice) return;
+    
+    const paidAmount = currentInvoice.totalAmount - currentInvoice.balanceAmount;
+    
+    document.getElementById('invoiceTotal').textContent = 
+      `$${currentInvoice.totalAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('invoicePaid').textContent = 
+      `$${paidAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('invoiceBalance').textContent = 
+      `$${currentInvoice.balanceAmount.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    
+    invoiceDetailsDiv.style.display = 'block';
+  }
+
+  function hideInvoiceDetails() {
+    invoiceDetailsDiv.style.display = 'none';
+  }
+
+  function updateQuickButtons() {
+    const buttons = document.getElementById('quickAmountButtons');
+    if (currentInvoice) {
+      buttons.style.display = 'flex';
+    } else {
+      buttons.style.display = 'none';
+    }
+  }
+
+  // Payment method change
+  paymentMethodSelect.addEventListener('change', function() {
+    const method = this.value;
+    
+    // Show/hide relevant fields
+    if (method === 'check') {
+      checkNumberInput.closest('.col-md-6').style.display = 'block';
+      transactionIdInput.closest('.col-md-6').style.display = 'none';
+    } else if (method === 'cash') {
+      checkNumberInput.closest('.col-md-6').style.display = 'none';
+      transactionIdInput.closest('.col-md-6').style.display = 'none';
+    } else {
+      checkNumberInput.closest('.col-md-6').style.display = 'none';
+      transactionIdInput.closest('.col-md-6').style.display = 'block';
+    }
+    
+    // Auto-populate description
+    if (!document.getElementById('description').value) {
+      document.getElementById('description').value = 
+        `Payment via ${method.replace('_', ' ')}`;
+    }
+  });
+
+  // Calculate net amount
+  function calculateNetAmount() {
+    const amount = parseFloat(amountInput.value) || 0;
+    const fee = parseFloat(processingFeeInput.value) || 0;
+    const net = Math.max(0, amount - fee);
+    
+    document.getElementById('netAmount').textContent = 
+      `$${net.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+  }
+
+  amountInput.addEventListener('input', calculateNetAmount);
+  processingFeeInput.addEventListener('input', calculateNetAmount);
+
+  // Global functions for quick amount buttons
+  window.setFullBalance = function() {
+    if (currentInvoice) {
+      amountInput.value = currentInvoice.balanceAmount.toFixed(2);
+      calculateNetAmount();
+    }
+  };
+
+  window.setPartialAmount = function(percentage) {
+    if (currentInvoice) {
+      const amount = currentInvoice.balanceAmount * percentage;
+      amountInput.value = amount.toFixed(2);
+      calculateNetAmount();
+    }
+  };
+
+  // Form validation
+  form.addEventListener('submit', function(e) {
+    if (!currentInvoice) {
+      e.preventDefault();
+      alert('Please select an invoice.');
+      return;
+    }
+
+    const amount = parseFloat(amountInput.value);
+    if (!amount || amount <= 0) {
+      e.preventDefault();
+      alert('Please enter a valid payment amount.');
+      return;
+    }
+
+    if (amount > currentInvoice.balanceAmount) {
+      e.preventDefault();
+      alert(`Payment amount ($${amount.toFixed(2)}) cannot exceed the balance due ($${currentInvoice.balanceAmount.toFixed(2)}).`);
+      return;
+    }
+
+    // Show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Recording Payment...';
+    submitBtn.disabled = true;
+  });
+
+  // Initial setup
+  if (invoiceSelect.value) {
+    invoiceSelect.dispatchEvent(new Event('change'));
+  }
+  paymentMethodSelect.dispatchEvent(new Event('change'));
+  calculateNetAmount();
+});
+</script>
+
+<%- include('../partials/footer') %> 

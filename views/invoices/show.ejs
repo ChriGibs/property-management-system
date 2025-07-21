@@ -1,0 +1,478 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-dark mb-0">
+      <i class="fas fa-file-invoice me-2"></i>Invoice <%= invoice.invoiceNumber %>
+    </h1>
+    <div class="btn-group">
+      <a href="/invoices" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-2"></i>Back to Invoices
+      </a>
+      <a href="/invoices/<%= invoice.id %>/edit" class="btn btn-primary">
+        <i class="fas fa-edit me-2"></i>Edit Invoice
+      </a>
+      <% if (invoice.status !== 'paid' && invoice.balanceAmount > 0) { %>
+        <a href="/payments/new?invoice=<%= invoice.id %>" class="btn btn-success">
+          <i class="fas fa-credit-card me-2"></i>Record Payment
+        </a>
+      <% } %>
+      <button class="btn btn-outline-danger" onclick="confirmDelete()">
+        <i class="fas fa-trash me-2"></i>Delete
+      </button>
+    </div>
+  </div>
+
+  <!-- Success/Error Messages -->
+  <% if (messages.success && messages.success.length > 0) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <i class="fas fa-check-circle me-2"></i>
+      <%= messages.success.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+  
+  <% if (messages.error && messages.error.length > 0) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <%= messages.error.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+
+  <div class="row">
+    <!-- Left Column - Invoice & Lease Info -->
+    <div class="col-lg-4">
+      <!-- Invoice Status -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>Invoice Status
+          </h5>
+        </div>
+        <div class="card-body text-center">
+          <span class="badge fs-6 bg-<%= 
+            invoice.status === 'paid' ? 'success' : 
+            invoice.status === 'sent' ? 'primary' : 
+            invoice.status === 'overdue' ? 'danger' : 
+            invoice.status === 'partially_paid' ? 'warning' : 
+            'secondary' 
+          %>">
+            <%= invoice.status.replace('_', ' ').toUpperCase() %>
+          </span>
+          
+          <% if (invoice.isOverdue && invoice.balanceAmount > 0) { %>
+            <div class="mt-2">
+              <small class="text-danger">
+                <i class="fas fa-exclamation-triangle"></i> 
+                Overdue since <%= new Date(invoice.dueDate).toLocaleDateString() %>
+              </small>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Lease Information -->
+      <% if (invoice.lease) { %>
+        <div class="card shadow-sm mb-4">
+          <div class="card-header bg-white border-bottom">
+            <h5 class="mb-0">
+              <i class="fas fa-file-contract me-2"></i>Associated Lease
+            </h5>
+          </div>
+          <div class="card-body">
+            <% if (invoice.lease.property) { %>
+              <h6>
+                <a href="/properties/<%= invoice.lease.property.id %>" class="text-decoration-none">
+                  <%= invoice.lease.property.name || invoice.lease.property.address %>
+                </a>
+              </h6>
+              <p class="text-muted mb-2">
+                <%= invoice.lease.property.address %><br>
+                <%= invoice.lease.property.city %>, <%= invoice.lease.property.state %> <%= invoice.lease.property.zipCode %>
+              </p>
+            <% } %>
+            
+            <!-- Tenants -->
+            <% 
+              const tenants = [];
+              if (invoice.lease.tenant1) tenants.push(invoice.lease.tenant1);
+              if (invoice.lease.tenant2) tenants.push(invoice.lease.tenant2);
+              if (invoice.lease.tenant3) tenants.push(invoice.lease.tenant3);
+              if (invoice.lease.tenant4) tenants.push(invoice.lease.tenant4);
+            %>
+            
+            <% if (tenants.length > 0) { %>
+              <div class="mt-3">
+                <strong class="text-muted">Tenants:</strong>
+                <% tenants.forEach((tenant, index) => { %>
+                  <div class="d-flex align-items-center mt-2">
+                    <div class="avatar-circle bg-primary text-white me-2" style="width: 30px; height: 30px; font-size: 0.8rem;">
+                      <%= tenant.firstName.charAt(0) + tenant.lastName.charAt(0) %>
+                    </div>
+                    <a href="/tenants/<%= tenant.id %>" class="text-decoration-none">
+                      <%= tenant.getFullName() %>
+                    </a>
+                  </div>
+                <% }) %>
+              </div>
+            <% } %>
+            
+            <div class="mt-3">
+              <a href="/leases/<%= invoice.lease.id %>" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-external-link-alt me-2"></i>View Lease
+              </a>
+            </div>
+          </div>
+        </div>
+      <% } else { %>
+        <div class="card shadow-sm mb-4">
+          <div class="card-body text-center">
+            <i class="fas fa-info-circle text-muted mb-2"></i>
+            <p class="text-muted mb-0">This is a general invoice not associated with any lease.</p>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Quick Actions -->
+      <div class="card shadow-sm">
+        <div class="card-header bg-white border-bottom">
+          <h5 class="mb-0">
+            <i class="fas fa-tools me-2"></i>Quick Actions
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <% if (invoice.status === 'draft') { %>
+              <form action="/invoices/<%= invoice.id %>/send" method="POST">
+                <button type="submit" class="btn btn-primary w-100">
+                  <i class="fas fa-paper-plane me-2"></i>Send Invoice
+                </button>
+              </form>
+            <% } %>
+            
+            <% if (invoice.status !== 'paid' && invoice.balanceAmount > 0) { %>
+              <a href="/payments/new?invoice=<%= invoice.id %>" class="btn btn-success w-100">
+                <i class="fas fa-credit-card me-2"></i>Record Payment
+              </a>
+              
+              <form action="/invoices/<%= invoice.id %>/mark-paid" method="POST">
+                <button type="submit" class="btn btn-outline-success w-100">
+                  <i class="fas fa-check-circle me-2"></i>Mark as Paid
+                </button>
+              </form>
+            <% } %>
+            
+            <a href="/invoices/<%= invoice.id %>/edit" class="btn btn-outline-warning w-100">
+              <i class="fas fa-edit me-2"></i>Edit Invoice
+            </a>
+            
+            <button class="btn btn-outline-info w-100" onclick="window.print()">
+              <i class="fas fa-print me-2"></i>Print Invoice
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column - Invoice Details -->
+    <div class="col-lg-8">
+      <!-- Invoice Details -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom">
+          <h5 class="mb-0">
+            <i class="fas fa-receipt me-2"></i>Invoice Details
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <strong class="text-muted">Invoice Number:</strong>
+              <div class="h6"><%= invoice.invoiceNumber %></div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <strong class="text-muted">Invoice Date:</strong>
+              <div class="h6"><%= new Date(invoice.invoiceDate).toLocaleDateString() %></div>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <strong class="text-muted">Due Date:</strong>
+              <div class="h6 <%= invoice.isOverdue && invoice.balanceAmount > 0 ? 'text-danger' : '' %>">
+                <%= new Date(invoice.dueDate).toLocaleDateString() %>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <% if (invoice.sentDate) { %>
+                <strong class="text-muted">Sent Date:</strong>
+                <div class="h6"><%= new Date(invoice.sentDate).toLocaleDateString() %></div>
+              <% } %>
+            </div>
+          </div>
+
+          <% if (invoice.periodStart && invoice.periodEnd) { %>
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <strong class="text-muted">Billing Period:</strong>
+                <div class="h6">
+                  <%= new Date(invoice.periodStart).toLocaleDateString() %> - 
+                  <%= new Date(invoice.periodEnd).toLocaleDateString() %>
+                </div>
+              </div>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Financial Summary -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom">
+          <h5 class="mb-0">
+            <i class="fas fa-dollar-sign me-2"></i>Financial Summary
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row mb-4">
+            <div class="col-md-3">
+              <div class="text-center">
+                <h4 class="text-info mb-1">$<%= new Intl.NumberFormat().format(invoice.rentAmount || 0) %></h4>
+                <small class="text-muted">Rent Amount</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <h4 class="text-warning mb-1">$<%= new Intl.NumberFormat().format(invoice.lateFeeAmount || 0) %></h4>
+                <small class="text-muted">Late Fee</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <h4 class="text-secondary mb-1">$<%= new Intl.NumberFormat().format(invoice.otherCharges || 0) %></h4>
+                <small class="text-muted">Other Charges</small>
+              </div>
+            </div>
+            <div class="col-md-3">
+              <div class="text-center">
+                <h3 class="text-primary mb-1">$<%= new Intl.NumberFormat().format(invoice.totalAmount) %></h3>
+                <small class="text-muted">Total Amount</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="text-center">
+                <h4 class="text-success mb-1">$<%= new Intl.NumberFormat().format(invoice.totalPaid || 0) %></h4>
+                <small class="text-muted">Amount Paid</small>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="text-center">
+                <h4 class="<%= invoice.balanceAmount > 0 ? 'text-danger' : 'text-success' %> mb-1">
+                  $<%= new Intl.NumberFormat().format(invoice.balanceAmount || 0) %>
+                </h4>
+                <small class="text-muted">Balance Due</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Progress -->
+          <% if (invoice.totalAmount > 0) { %>
+            <% const progress = Math.round((invoice.totalPaid / invoice.totalAmount) * 100) %>
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="text-muted">Payment Progress</span>
+                <span class="text-muted"><%= progress %>%</span>
+              </div>
+                             <div class="progress" style="height: 10px;">
+                 <div class="progress-bar bg-success" style="width: <%= Math.min(100, progress) %>%"></div>
+               </div>
+            </div>
+          <% } %>
+
+          <% if (invoice.otherChargesDescription) { %>
+            <div class="alert alert-info">
+              <strong>Other Charges:</strong> <%= invoice.otherChargesDescription %>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Payments -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            <i class="fas fa-credit-card me-2"></i>Payments
+            <span class="badge bg-secondary ms-2"><%= invoice.payments.length %></span>
+          </h5>
+          <% if (invoice.balanceAmount > 0) { %>
+            <a href="/payments/new?invoice=<%= invoice.id %>" class="btn btn-sm btn-primary">
+              <i class="fas fa-plus me-2"></i>Add Payment
+            </a>
+          <% } %>
+        </div>
+        <div class="card-body p-0">
+          <% if (invoice.payments.length === 0) { %>
+            <div class="text-center py-4">
+              <i class="fas fa-credit-card fa-2x text-muted mb-3"></i>
+              <h6 class="text-muted">No Payments Recorded</h6>
+              <% if (invoice.balanceAmount > 0) { %>
+                <p class="text-muted">Record the first payment for this invoice.</p>
+                <a href="/payments/new?invoice=<%= invoice.id %>" class="btn btn-primary">
+                  <i class="fas fa-plus me-2"></i>Record Payment
+                </a>
+              <% } %>
+            </div>
+          <% } else { %>
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Method</th>
+                    <th>Status</th>
+                    <th>Reference</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% invoice.payments.forEach(payment => { %>
+                    <tr>
+                      <td>
+                        <a href="/payments/<%= payment.id %>" class="text-decoration-none">
+                          <%= new Date(payment.paymentDate).toLocaleDateString() %>
+                        </a>
+                      </td>
+                      <td>
+                        <span class="fw-bold text-success">$<%= new Intl.NumberFormat().format(payment.amount) %></span>
+                        <% if (payment.processingFee > 0) { %>
+                          <br><small class="text-muted">Fee: $<%= new Intl.NumberFormat().format(payment.processingFee) %></small>
+                        <% } %>
+                      </td>
+                      <td>
+                        <span class="badge bg-light text-dark">
+                          <%= payment.paymentMethod.replace('_', ' ').toUpperCase() %>
+                        </span>
+                      </td>
+                      <td>
+                        <span class="badge bg-<%= 
+                          payment.status === 'completed' ? 'success' : 
+                          payment.status === 'pending' ? 'warning' : 
+                          payment.status === 'failed' ? 'danger' : 
+                          payment.status === 'refunded' ? 'secondary' : 
+                          'light text-dark' 
+                        %>">
+                          <%= payment.status.toUpperCase() %>
+                        </span>
+                      </td>
+                      <td>
+                        <% if (payment.transactionId) { %>
+                          <small class="text-muted"><%= payment.transactionId %></small>
+                        <% } else if (payment.checkNumber) { %>
+                          <small class="text-muted">Check #<%= payment.checkNumber %></small>
+                        <% } else { %>
+                          <small class="text-muted">-</small>
+                        <% } %>
+                      </td>
+                      <td>
+                        <div class="dropdown">
+                          <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Actions
+                          </button>
+                          <ul class="dropdown-menu">
+                            <li>
+                              <a class="dropdown-item" href="/payments/<%= payment.id %>">
+                                <i class="fas fa-eye me-2"></i>View Details
+                              </a>
+                            </li>
+                            <li>
+                              <a class="dropdown-item" href="/payments/<%= payment.id %>/edit">
+                                <i class="fas fa-edit me-2"></i>Edit
+                              </a>
+                            </li>
+                            <% if (payment.status === 'completed') { %>
+                              <li><hr class="dropdown-divider"></li>
+                              <li>
+                                <form action="/payments/<%= payment.id %>/refund" method="POST" style="display: inline;">
+                                  <button type="submit" class="dropdown-item text-warning">
+                                    <i class="fas fa-undo me-2"></i>Process Refund
+                                  </button>
+                                </form>
+                              </li>
+                            <% } %>
+                          </ul>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                </tbody>
+              </table>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Notes -->
+      <% if (invoice.notes) { %>
+        <div class="card shadow-sm">
+          <div class="card-header bg-white border-bottom">
+            <h5 class="mb-0">
+              <i class="fas fa-sticky-note me-2"></i>Notes
+            </h5>
+          </div>
+          <div class="card-body">
+            <p class="mb-0"><%= invoice.notes %></p>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete invoice <strong><%= invoice.invoiceNumber %></strong>?</p>
+        <% if (invoice.payments && invoice.payments.length > 0) { %>
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            This invoice has <%= invoice.payments.length %> payment(s). You must delete all payments before deleting the invoice.
+          </div>
+        <% } else { %>
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            This action cannot be undone. The invoice will be permanently removed.
+          </div>
+        <% } %>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <% if (!invoice.payments || invoice.payments.length === 0) { %>
+          <form action="/invoices/<%= invoice.id %>" method="POST" style="display: inline;">
+            <input type="hidden" name="_method" value="DELETE">
+            <button type="submit" class="btn btn-danger">
+              <i class="fas fa-trash me-2"></i>Delete Invoice
+            </button>
+          </form>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function confirmDelete() {
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+
+<%- include('../partials/footer') %> 

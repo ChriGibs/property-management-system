@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Property Management</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+        }
+        
+        .sidebar .nav-link {
+            color: #333;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: #0d6efd;
+        }
+        
+        .sidebar .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        
+        .main-content {
+            padding-left: 0;
+        }
+        
+        @media (min-width: 768px) {
+            .main-content {
+                padding-left: 250px;
+            }
+        }
+        
+        .card-stat {
+            background: linear-gradient(45deg, #007bff, #6610f2);
+            color: white;
+        }
+        
+        .card-warning {
+            background: linear-gradient(45deg, #fd7e14, #ffc107);
+            color: white;
+        }
+        
+        .card-success {
+            background: linear-gradient(45deg, #198754, #20c997);
+            color: white;
+        }
+        
+        .card-danger {
+            background: linear-gradient(45deg, #dc3545, #e83e8c);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation for authenticated users -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-building"></i> Property Management
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> <%= user.firstName %> <%= user.lastName %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/dashboard">Dashboard</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="/auth/logout" method="POST" class="d-inline">
+                                    <button type="submit" class="dropdown-item">Logout</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar for managers -->
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse position-fixed">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/properties">
+                                <i class="bi bi-building"></i> Properties
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/tenants">
+                                <i class="bi bi-people"></i> Tenants
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/leases">
+                                <i class="bi bi-file-text"></i> Leases
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/invoices">
+                                <i class="bi bi-receipt"></i> Invoices
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/payments">
+                                <i class="bi bi-credit-card"></i> Payments
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <main class="main-content">
+        <div class="container-fluid px-4 py-3">
+            <!-- Flash messages -->
+            <% if (messages.success) { %>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <%= messages.success %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+            
+            <% if (messages.error) { %>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <%= messages.error %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+            
+            <% if (messages.warning) { %>
+                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                    <%= messages.warning %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="bi bi-speedometer2"></i> Dashboard Overview
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-calendar3"></i> This month
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistics Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card card-stat">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="text-white-50">Total Properties</div>
+                                    <div class="fs-2 fw-bold"><%= stats.totalProperties %></div>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-building fs-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card card-success">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="text-white-50">Active Tenants</div>
+                                    <div class="fs-2 fw-bold"><%= stats.totalTenants %></div>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-people fs-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card card-warning">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="text-white-50">Active Leases</div>
+                                    <div class="fs-2 fw-bold"><%= stats.activeLeases %></div>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-file-text fs-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card <%= stats.overdueCount > 0 ? 'card-danger' : 'card-success' %>">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <div class="text-white-50">Overdue Invoices</div>
+                                    <div class="fs-2 fw-bold"><%= stats.overdueCount %></div>
+                                </div>
+                                <div class="align-self-center">
+                                    <i class="bi bi-exclamation-triangle fs-1"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Monthly Rent Summary -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-cash-stack"></i> Monthly Rent Summary
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col">
+                                    <div class="fs-4 fw-bold text-success">$<%= parseFloat(stats.monthlyRentDue || 0).toLocaleString() %></div>
+                                    <div class="text-muted">Expected This Month</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">
+                                <i class="bi bi-graph-up"></i> Quick Actions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="/properties/new" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-plus-circle"></i> Add Property
+                                </a>
+                                <a href="/invoices" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-receipt"></i> View All Invoices
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Welcome Message for New Users -->
+            <% if (stats.totalProperties === 0) { %>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-star"></i> Welcome to Your Property Management System!
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <h6>Get started by adding your first property:</h6>
+                                <ol>
+                                    <li>Click <strong>"Properties"</strong> in the sidebar</li>
+                                    <li>Add your rental properties with addresses and details</li>
+                                    <li>Create tenant accounts for your current renters</li>
+                                    <li>Set up leases connecting properties to tenants</li>
+                                    <li>Generate invoices and track payments</li>
+                                </ol>
+                                <a href="/properties" class="btn btn-primary">
+                                    <i class="bi bi-building"></i> Manage Properties
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

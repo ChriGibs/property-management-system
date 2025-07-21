@@ -1,0 +1,332 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-dark mb-0">
+      <i class="fas fa-credit-card me-2"></i>Payments
+    </h1>
+    <div class="btn-group">
+      <a href="/payments/new" class="btn btn-primary">
+        <i class="fas fa-plus me-2"></i>Record Payment
+      </a>
+      <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="fas fa-filter me-2"></i>Filter
+      </button>
+      <ul class="dropdown-menu">
+        <li><a class="dropdown-item" href="/payments?status=completed">Completed</a></li>
+        <li><a class="dropdown-item" href="/payments?status=pending">Pending</a></li>
+        <li><a class="dropdown-item" href="/payments?status=failed">Failed</a></li>
+        <li><a class="dropdown-item" href="/payments?status=refunded">Refunded</a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="/payments">All Payments</a></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Success/Error Messages -->
+  <% if (messages.success && messages.success.length > 0) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <i class="fas fa-check-circle me-2"></i>
+      <%= messages.success.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+  
+  <% if (messages.error && messages.error.length > 0) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <%= messages.error.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+
+  <!-- Payments List -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-white border-bottom">
+      <h5 class="mb-0">
+        <i class="fas fa-list me-2"></i>All Payments
+        <span class="badge bg-secondary ms-2"><%= payments.length %></span>
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      <% if (payments.length === 0) { %>
+        <div class="text-center py-5">
+          <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+          <h5 class="text-muted">No Payments Found</h5>
+          <p class="text-muted">Get started by recording your first payment.</p>
+          <a href="/payments/new" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Record First Payment
+          </a>
+        </div>
+      <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0" id="paymentsTable">
+            <thead class="table-light">
+              <tr>
+                <th>Date</th>
+                <th>Invoice</th>
+                <th>Property/Lease</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Reference</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% payments.forEach(payment => { %>
+                <tr>
+                  <td>
+                    <a href="/payments/<%= payment.id %>" class="text-decoration-none fw-bold">
+                      <%= new Date(payment.paymentDate).toLocaleDateString() %>
+                    </a>
+                    <% if (payment.processedAt) { %>
+                      <br><small class="text-muted">
+                        Processed: <%= new Date(payment.processedAt).toLocaleDateString() %>
+                      </small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (payment.invoice) { %>
+                      <a href="/invoices/<%= payment.invoice.id %>" class="text-decoration-none">
+                        <%= payment.invoice.invoiceNumber %>
+                      </a>
+                      <% if (payment.invoice.lease) { %>
+                        <br><small class="text-muted">
+                          <%= payment.invoice.periodStart ? new Date(payment.invoice.periodStart).toLocaleDateString() + ' - ' + new Date(payment.invoice.periodEnd).toLocaleDateString() : 'General invoice' %>
+                        </small>
+                      <% } %>
+                    <% } else { %>
+                      <span class="text-muted">Unknown invoice</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (payment.invoice && payment.invoice.lease && payment.invoice.lease.property) { %>
+                      <div class="fw-bold">
+                        <%= payment.invoice.lease.property.name || payment.invoice.lease.property.address %>
+                      </div>
+                      <small class="text-muted">
+                        <% if (payment.invoice.lease.tenant1) { %>
+                          <%= payment.invoice.lease.tenant1.getFullName() %>
+                        <% } else { %>
+                          No tenant assigned
+                        <% } %>
+                      </small>
+                    <% } else { %>
+                      <span class="text-muted fst-italic">General payment</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <span class="fw-bold text-success">$<%= new Intl.NumberFormat().format(payment.amount) %></span>
+                    <% if (payment.processingFee > 0) { %>
+                      <br><small class="text-muted">Fee: $<%= new Intl.NumberFormat().format(payment.processingFee) %></small>
+                      <br><small class="text-muted">Net: $<%= new Intl.NumberFormat().format(payment.netAmount) %></small>
+                    <% } %>
+                    <% if (payment.refundAmount > 0) { %>
+                      <br><small class="text-danger">Refunded: $<%= new Intl.NumberFormat().format(payment.refundAmount) %></small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <span class="badge bg-light text-dark">
+                      <%= payment.paymentMethod.replace('_', ' ').toUpperCase() %>
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge bg-<%= 
+                      payment.status === 'completed' ? 'success' : 
+                      payment.status === 'pending' ? 'warning' : 
+                      payment.status === 'failed' ? 'danger' : 
+                      payment.status === 'refunded' ? 'secondary' : 
+                      'light text-dark' 
+                    %>">
+                      <%= payment.status.toUpperCase() %>
+                    </span>
+                  </td>
+                  <td>
+                    <% if (payment.transactionId) { %>
+                      <small class="text-muted"><%= payment.transactionId %></small>
+                    <% } else if (payment.checkNumber) { %>
+                      <small class="text-muted">Check #<%= payment.checkNumber %></small>
+                    <% } else { %>
+                      <small class="text-muted">-</small>
+                    <% } %>
+                    <% if (payment.description) { %>
+                      <br><small class="text-info"><%= payment.description %></small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div class="dropdown">
+                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        Actions
+                      </button>
+                      <ul class="dropdown-menu">
+                        <li>
+                          <a class="dropdown-item" href="/payments/<%= payment.id %>">
+                            <i class="fas fa-eye me-2"></i>View Details
+                          </a>
+                        </li>
+                        <li>
+                          <a class="dropdown-item" href="/payments/<%= payment.id %>/edit">
+                            <i class="fas fa-edit me-2"></i>Edit
+                          </a>
+                        </li>
+                        <% if (payment.invoice) { %>
+                          <li>
+                            <a class="dropdown-item" href="/invoices/<%= payment.invoice.id %>">
+                              <i class="fas fa-file-invoice me-2"></i>View Invoice
+                            </a>
+                          </li>
+                        <% } %>
+                        <% if (payment.status === 'completed' && payment.refundAmount === 0) { %>
+                          <li><hr class="dropdown-divider"></li>
+                          <li>
+                            <form action="/payments/<%= payment.id %>/refund" method="POST" style="display: inline;">
+                              <button type="submit" class="dropdown-item text-warning" onclick="return confirm('Are you sure you want to process a refund for this payment?')">
+                                <i class="fas fa-undo me-2"></i>Process Refund
+                              </button>
+                            </form>
+                          </li>
+                        <% } %>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                          <button class="dropdown-item text-danger" onclick="confirmDelete('<%= payment.id %>', '<%= new Date(payment.paymentDate).toLocaleDateString() %>', '<%= new Intl.NumberFormat().format(payment.amount) %>')">
+                            <i class="fas fa-trash me-2"></i>Delete
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <% if (payments.length > 0) { %>
+    <div class="row mt-4">
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title text-success">Total Received</h5>
+            <h3 class="text-success">
+              $<%= new Intl.NumberFormat().format(
+                payments
+                  .filter(p => p.status === 'completed')
+                  .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
+              ) %>
+            </h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title text-warning">Pending</h5>
+            <h3 class="text-warning">
+              $<%= new Intl.NumberFormat().format(
+                payments
+                  .filter(p => p.status === 'pending')
+                  .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0)
+              ) %>
+            </h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title text-secondary">Processing Fees</h5>
+            <h3 class="text-secondary">
+              $<%= new Intl.NumberFormat().format(
+                payments
+                  .filter(p => p.status === 'completed')
+                  .reduce((sum, p) => sum + parseFloat(p.processingFee || 0), 0)
+              ) %>
+            </h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-center">
+          <div class="card-body">
+            <h5 class="card-title text-danger">Refunded</h5>
+            <h3 class="text-danger">
+              $<%= new Intl.NumberFormat().format(
+                payments
+                  .filter(p => p.status === 'refunded')
+                  .reduce((sum, p) => sum + parseFloat(p.refundAmount || 0), 0)
+              ) %>
+            </h3>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete this payment?</p>
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>Date:</strong> <span id="deletePaymentDate"></span><br>
+          <strong>Amount:</strong> $<span id="deletePaymentAmount"></span>
+        </div>
+        <div class="alert alert-danger">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          This action cannot be undone. The payment will be permanently removed and invoice balances will be updated.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteForm" method="POST" style="display: inline;">
+          <input type="hidden" name="_method" value="DELETE">
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash me-2"></i>Delete Payment
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Initialize DataTable
+document.addEventListener('DOMContentLoaded', function() {
+  if (document.getElementById('paymentsTable')) {
+    $('#paymentsTable').DataTable({
+      pageLength: 25,
+      order: [[0, 'desc']], // Sort by date descending
+      columnDefs: [
+        { orderable: false, targets: [7] } // Disable sorting on actions column
+      ],
+      language: {
+        search: "Search payments:",
+        lengthMenu: "Show _MENU_ payments per page",
+        info: "Showing _START_ to _END_ of _TOTAL_ payments"
+      }
+    });
+  }
+});
+
+function confirmDelete(paymentId, paymentDate, paymentAmount) {
+  document.getElementById('deletePaymentDate').textContent = paymentDate;
+  document.getElementById('deletePaymentAmount').textContent = paymentAmount;
+  document.getElementById('deleteForm').action = `/payments/${paymentId}`;
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+
+<%- include('../partials/footer') %> 

@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Property Management</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+        }
+        
+        .sidebar .nav-link {
+            color: #333;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: #0d6efd;
+        }
+        
+        .sidebar .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        
+        .main-content {
+            padding-left: 0;
+        }
+        
+        @media (min-width: 768px) {
+            .main-content {
+                padding-left: 250px;
+            }
+        }
+        
+        .info-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-building"></i> Property Management
+            </a>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> <%= user.firstName %> <%= user.lastName %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/dashboard">Dashboard</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="/auth/logout" method="POST" class="d-inline">
+                                    <button type="submit" class="dropdown-item">Logout</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse position-fixed">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/properties">
+                                <i class="bi bi-building"></i> Properties
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/tenants">
+                                <i class="bi bi-people"></i> Tenants
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/leases">
+                                <i class="bi bi-file-text"></i> Leases
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/invoices">
+                                <i class="bi bi-receipt"></i> Invoices
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/payments">
+                                <i class="bi bi-credit-card"></i> Payments
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <main class="main-content">
+        <div class="container-fluid px-4 py-3">
+            <!-- Flash messages -->
+            <% if (messages.success) { %>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <%= messages.success %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+            
+            <% if (messages.error) { %>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <%= messages.error %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="bi bi-building"></i> <%= property.name %>
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="/properties" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> Back to Properties
+                        </a>
+                        <a href="/properties/<%= property.id %>/edit" class="btn btn-primary">
+                            <i class="bi bi-pencil"></i> Edit Property
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Property Information -->
+                <div class="col-lg-8">
+                    <!-- Basic Information -->
+                    <div class="info-section">
+                        <h4 class="mb-3">
+                            <i class="bi bi-info-circle"></i> Basic Information
+                        </h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Property Name:</strong> <%= property.name %></p>
+                                <p><strong>Property Type:</strong> 
+                                    <span class="badge bg-secondary">
+                                        <%= property.propertyType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()) %>
+                                    </span>
+                                </p>
+                                <p><strong>Status:</strong> 
+                                    <span class="badge bg-<%= property.isActive ? 'success' : 'danger' %>">
+                                        <%= property.isActive ? 'Active' : 'Inactive' %>
+                                    </span>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <% if (property.description) { %>
+                                    <p><strong>Description:</strong><br>
+                                    <span class="text-muted"><%= property.description %></span></p>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Address Information -->
+                    <div class="info-section">
+                        <h4 class="mb-3">
+                            <i class="bi bi-geo-alt"></i> Address Information
+                        </h4>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <p><strong>Street Address:</strong> <%= property.address %></p>
+                                <p><strong>City, State ZIP:</strong> <%= property.city %>, <%= property.state %> <%= property.zipCode %></p>
+                                <% if (property.county) { %>
+                                    <p><strong>County:</strong> <%= property.county %></p>
+                                <% } %>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <a href="https://maps.google.com?q=<%= encodeURIComponent(property.address + ', ' + property.city + ', ' + property.state + ' ' + property.zipCode) %>" 
+                                       target="_blank" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-map"></i> View on Map
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Property Details -->
+                    <div class="info-section">
+                        <h4 class="mb-3">
+                            <i class="bi bi-house"></i> Property Details
+                        </h4>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <div class="fs-3 text-primary"><%= property.bedrooms %></div>
+                                    <small class="text-muted">Bedrooms</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <div class="fs-3 text-primary"><%= property.bathrooms %></div>
+                                    <small class="text-muted">Bathrooms</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="text-center">
+                                    <div class="fs-3 text-primary">
+                                        <%= property.squareFootage ? property.squareFootage.toLocaleString() : 'N/A' %>
+                                    </div>
+                                    <small class="text-muted">Square Feet</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financial Information -->
+                    <div class="info-section">
+                        <h4 class="mb-3">
+                            <i class="bi bi-currency-dollar"></i> Financial Information
+                        </h4>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <% if (property.purchasePrice) { %>
+                                    <p><strong>Purchase Price:</strong> 
+                                        $<%= parseFloat(property.purchasePrice).toLocaleString() %>
+                                    </p>
+                                <% } %>
+                                <% if (property.purchaseDate) { %>
+                                    <p><strong>Purchase Date:</strong> 
+                                        <%= new Date(property.purchaseDate).toLocaleDateString() %>
+                                    </p>
+                                <% } %>
+                            </div>
+                            <div class="col-md-6">
+                                <% if (property.currentValue) { %>
+                                    <p><strong>Current Value:</strong> 
+                                        $<%= parseFloat(property.currentValue).toLocaleString() %>
+                                    </p>
+                                    <% if (property.currentValueDate) { %>
+                                        <p><small class="text-muted">
+                                            Last updated: <%= new Date(property.currentValueDate).toLocaleDateString() %>
+                                        </small></p>
+                                    <% } %>
+                                <% } %>
+                                <% if (property.purchasePrice && property.currentValue) { %>
+                                    <% const appreciation = ((property.currentValue - property.purchasePrice) / property.purchasePrice * 100).toFixed(1) %>
+                                    <p><strong>Appreciation:</strong> 
+                                        <span class="badge bg-<%= appreciation >= 0 ? 'success' : 'danger' %>">
+                                            <%= appreciation >= 0 ? '+' : '' %><%= appreciation %>%
+                                        </span>
+                                    </p>
+                                <% } %>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lease Information -->
+                    <% if (property.leases && property.leases.length > 0) { %>
+                        <div class="info-section">
+                            <h4 class="mb-3">
+                                <i class="bi bi-file-text"></i> Lease History
+                            </h4>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tenant</th>
+                                            <th>Start Date</th>
+                                            <th>End Date</th>
+                                            <th>Monthly Rent</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <% property.leases.forEach(lease => { %>
+                                            <tr>
+                                                <td>
+                                                    <% if (lease.tenant) { %>
+                                                        <%= lease.tenant.firstName %> <%= lease.tenant.lastName %>
+                                                    <% } else { %>
+                                                        <span class="text-muted">Unknown</span>
+                                                    <% } %>
+                                                </td>
+                                                <td><%= new Date(lease.startDate).toLocaleDateString() %></td>
+                                                <td><%= new Date(lease.endDate).toLocaleDateString() %></td>
+                                                <td>$<%= parseFloat(lease.monthlyRent).toLocaleString() %></td>
+                                                <td>
+                                                    <span class="badge bg-<%= lease.status === 'active' ? 'success' : 'secondary' %>">
+                                                        <%= lease.status.charAt(0).toUpperCase() + lease.status.slice(1) %>
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        <% }) %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    <% } %>
+                </div>
+
+                <!-- Side Information -->
+                <div class="col-lg-4">
+                    <!-- Quick Stats -->
+                    <div class="card mb-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-graph-up"></i> Quick Stats
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">
+                                <small class="text-muted">Created</small><br>
+                                <%= new Date(property.createdAt).toLocaleDateString() %>
+                            </p>
+                            <p class="card-text">
+                                <small class="text-muted">Last Updated</small><br>
+                                <%= new Date(property.updatedAt).toLocaleDateString() %>
+                            </p>
+                            <% if (property.leases && property.leases.length > 0) { %>
+                                <p class="card-text">
+                                    <small class="text-muted">Total Leases</small><br>
+                                    <%= property.leases.length %>
+                                </p>
+                            <% } %>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-tools"></i> Actions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="/properties/<%= property.id %>/edit" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-pencil"></i> Edit Property
+                                </a>
+                                <button class="btn btn-outline-success btn-sm" disabled>
+                                    <i class="bi bi-plus-circle"></i> Add Lease
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" disabled>
+                                    <i class="bi bi-receipt"></i> View Invoices
+                                </button>
+                                <button class="btn btn-outline-warning btn-sm" disabled>
+                                    <i class="bi bi-currency-dollar"></i> Update Value
+                                </button>
+                                <hr>
+                                <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                                    <i class="bi bi-trash"></i> Delete Property
+                                </button>
+                            </div>
+                            <small class="text-muted mt-2 d-block">
+                                <i class="bi bi-info-circle"></i> Additional features coming soon
+                            </small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title text-danger">
+                        <i class="bi bi-exclamation-triangle"></i> Delete Property
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete "<strong><%= property.name %></strong>"?</p>
+                    <p class="text-danger">
+                        <i class="bi bi-exclamation-circle"></i> 
+                        This action cannot be undone. All associated data will be permanently deleted.
+                    </p>
+                    <% if (property.leases && property.leases.some(l => l.status === 'active')) { %>
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            This property has active leases and cannot be deleted. Please terminate all leases first.
+                        </div>
+                    <% } %>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <% if (!property.leases || !property.leases.some(l => l.status === 'active')) { %>
+                        <form action="/properties/<%= property.id %>?_method=DELETE" method="POST" class="d-inline">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> Delete Property
+                            </button>
+                        </form>
+                    <% } else { %>
+                        <button type="button" class="btn btn-danger" disabled>
+                            <i class="bi bi-trash"></i> Cannot Delete (Active Leases)
+                        </button>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

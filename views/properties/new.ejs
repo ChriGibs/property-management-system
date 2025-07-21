@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Property Management</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+        }
+        
+        .sidebar .nav-link {
+            color: #333;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: #0d6efd;
+        }
+        
+        .sidebar .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        
+        .main-content {
+            padding-left: 0;
+        }
+        
+        @media (min-width: 768px) {
+            .main-content {
+                padding-left: 250px;
+            }
+        }
+        
+        .autocomplete-suggestions {
+            border: 1px solid #ddd;
+            border-top: none;
+            background: white;
+            max-height: 200px;
+            overflow-y: auto;
+            position: absolute;
+            width: 100%;
+            z-index: 1000;
+        }
+        
+        .autocomplete-suggestion {
+            padding: 10px;
+            cursor: pointer;
+        }
+        
+        .autocomplete-suggestion:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-building"></i> Property Management
+            </a>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> <%= user.firstName %> <%= user.lastName %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/dashboard">Dashboard</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="/auth/logout" method="POST" class="d-inline">
+                                    <button type="submit" class="dropdown-item">Logout</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse position-fixed">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/properties">
+                                <i class="bi bi-building"></i> Properties
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/tenants">
+                                <i class="bi bi-people"></i> Tenants
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/leases">
+                                <i class="bi bi-file-text"></i> Leases
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/invoices">
+                                <i class="bi bi-receipt"></i> Invoices
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/payments">
+                                <i class="bi bi-credit-card"></i> Payments
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <main class="main-content">
+        <div class="container-fluid px-4 py-3">
+            <!-- Flash messages -->
+            <% if (messages.success) { %>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <%= messages.success %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+            
+            <% if (messages.error) { %>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <%= messages.error %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="bi bi-plus-circle"></i> Add New Property
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="/properties" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-left"></i> Back to Properties
+                    </a>
+                </div>
+            </div>
+
+            <!-- Property Form -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <form action="/properties" method="POST" id="propertyForm">
+                        <!-- Basic Information -->
+                        <div class="form-section">
+                            <h4 class="mb-3">
+                                <i class="bi bi-info-circle"></i> Basic Information
+                            </h4>
+                            
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <div class="mb-3">
+                                        <label for="name" class="form-label">Property Name *</label>
+                                        <input type="text" class="form-control" id="name" name="name" 
+                                               placeholder="e.g., Maple Street Rental, Downtown Apartment" required>
+                                        <div class="form-text">A friendly name to identify this property</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="propertyType" class="form-label">Property Type</label>
+                                        <select class="form-select" id="propertyType" name="propertyType">
+                                            <option value="single-family">Single Family</option>
+                                            <option value="apartment">Apartment</option>
+                                            <option value="condo">Condo</option>
+                                            <option value="townhouse">Townhouse</option>
+                                            <option value="duplex">Duplex</option>
+                                            <option value="other">Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Address Information -->
+                        <div class="form-section">
+                            <h4 class="mb-3">
+                                <i class="bi bi-geo-alt"></i> Address Information
+                            </h4>
+                            
+                            <div class="mb-3 position-relative">
+                                <label for="address" class="form-label">Street Address *</label>
+                                <input type="text" class="form-control" id="address" name="address" 
+                                       placeholder="Start typing address..." required>
+                                <div id="addressSuggestions" class="autocomplete-suggestions" style="display: none;"></div>
+                                <div class="form-text">
+                                    <i class="bi bi-lightbulb"></i> Start typing for address suggestions
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="city" class="form-label">City *</label>
+                                        <input type="text" class="form-control" id="city" name="city" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="state" class="form-label">State *</label>
+                                        <input type="text" class="form-control" id="state" name="state" 
+                                               placeholder="CA, NY, TX..." required>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="zipCode" class="form-label">ZIP Code *</label>
+                                        <input type="text" class="form-control" id="zipCode" name="zipCode" 
+                                               pattern="[0-9]{5}(-[0-9]{4})?" required>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <div class="mb-3">
+                                        <label for="county" class="form-label">County</label>
+                                        <input type="text" class="form-control" id="county" name="county">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Property Details -->
+                        <div class="form-section">
+                            <h4 class="mb-3">
+                                <i class="bi bi-house"></i> Property Details
+                            </h4>
+                            
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="bedrooms" class="form-label">Bedrooms</label>
+                                        <input type="number" class="form-control" id="bedrooms" name="bedrooms" 
+                                               min="0" max="20" value="1">
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="bathrooms" class="form-label">Bathrooms</label>
+                                        <input type="number" class="form-control" id="bathrooms" name="bathrooms" 
+                                               min="0" max="20" step="0.5" value="1">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="squareFootage" class="form-label">Square Footage</label>
+                                        <input type="number" class="form-control" id="squareFootage" name="squareFootage" 
+                                               min="0" placeholder="e.g., 1200">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Description</label>
+                                <textarea class="form-control" id="description" name="description" rows="3" 
+                                          placeholder="Additional details about the property..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Financial Information -->
+                        <div class="form-section">
+                            <h4 class="mb-3">
+                                <i class="bi bi-currency-dollar"></i> Financial Information
+                            </h4>
+                            
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="purchasePrice" class="form-label">Purchase Price</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" id="purchasePrice" name="purchasePrice" 
+                                                   min="0" step="0.01" placeholder="0.00">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="purchaseDate" class="form-label">Purchase Date</label>
+                                        <input type="date" class="form-control" id="purchaseDate" name="purchaseDate">
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="currentValue" class="form-label">Current Value</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" id="currentValue" name="currentValue" 
+                                                   min="0" step="0.01" placeholder="0.00" readonly>
+                                            <button type="button" class="btn btn-outline-secondary" id="getZillowValue">
+                                                <i class="bi bi-search"></i> Get Value
+                                            </button>
+                                        </div>
+                                        <div class="form-text">
+                                            <span id="valueSource"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex justify-content-between">
+                            <a href="/properties" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary" id="submitBtn">
+                                <i class="bi bi-check-circle"></i> Add Property
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Help Panel -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="bi bi-question-circle"></i> Help & Tips
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <h6>Address Autocomplete</h6>
+                            <p class="small">Start typing in the address field to see suggestions. This helps ensure accurate addresses and automatically fills city, state, and ZIP.</p>
+                            
+                            <h6>Current Value</h6>
+                            <p class="small">Click "Get Value" to fetch an estimated current market value for the property. This uses real estate data APIs to provide market estimates.</p>
+                            
+                            <h6>Required Fields</h6>
+                            <p class="small">Fields marked with * are required. You can always edit these details later from the property management page.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Address Autocomplete & Zillow Integration -->
+    <script>
+        let addressTimeout;
+        const addressInput = document.getElementById('address');
+        const suggestionsDiv = document.getElementById('addressSuggestions');
+        
+        // Address autocomplete functionality
+        addressInput.addEventListener('input', function() {
+            clearTimeout(addressTimeout);
+            const query = this.value.trim();
+            
+            if (query.length < 3) {
+                suggestionsDiv.style.display = 'none';
+                return;
+            }
+            
+            addressTimeout = setTimeout(() => {
+                fetchAddressSuggestions(query);
+            }, 300);
+        });
+        
+        // Fetch address suggestions
+        async function fetchAddressSuggestions(query) {
+            try {
+                const response = await fetch(`/api/address-autocomplete?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                if (data.suggestions && data.suggestions.length > 0) {
+                    displaySuggestions(data.suggestions);
+                } else {
+                    suggestionsDiv.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Address autocomplete error:', error);
+                suggestionsDiv.style.display = 'none';
+            }
+        }
+        
+        // Display address suggestions
+        function displaySuggestions(suggestions) {
+            suggestionsDiv.innerHTML = '';
+            
+            suggestions.forEach(suggestion => {
+                const div = document.createElement('div');
+                div.className = 'autocomplete-suggestion';
+                div.textContent = suggestion.formatted_address;
+                div.addEventListener('click', () => selectAddress(suggestion));
+                suggestionsDiv.appendChild(div);
+            });
+            
+            suggestionsDiv.style.display = 'block';
+        }
+        
+        // Select an address from suggestions
+        function selectAddress(suggestion) {
+            document.getElementById('address').value = suggestion.street_address;
+            document.getElementById('city').value = suggestion.city;
+            document.getElementById('state').value = suggestion.state;
+            document.getElementById('zipCode').value = suggestion.zip_code;
+            document.getElementById('county').value = suggestion.county || '';
+            
+            suggestionsDiv.style.display = 'none';
+            
+            // Auto-generate property name if empty
+            const nameField = document.getElementById('name');
+            if (!nameField.value.trim()) {
+                nameField.value = `${suggestion.street_address} Property`;
+            }
+        }
+        
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!addressInput.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+                suggestionsDiv.style.display = 'none';
+            }
+        });
+        
+        // Get current property value from Zillow
+        document.getElementById('getZillowValue').addEventListener('click', async function() {
+            const button = this;
+            const addressValue = document.getElementById('address').value.trim();
+            const cityValue = document.getElementById('city').value.trim();
+            const stateValue = document.getElementById('state').value.trim();
+            const zipValue = document.getElementById('zipCode').value.trim();
+            
+            if (!addressValue || !cityValue || !stateValue || !zipValue) {
+                alert('Please fill in the complete address first');
+                return;
+            }
+            
+            button.disabled = true;
+            button.innerHTML = '<i class="bi bi-hourglass-split"></i> Getting Value...';
+            
+            try {
+                const fullAddress = `${addressValue}, ${cityValue}, ${stateValue} ${zipValue}`;
+                const response = await fetch('/api/property-value', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ address: fullAddress })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.value) {
+                    document.getElementById('currentValue').value = data.value;
+                    document.getElementById('valueSource').textContent = `Estimated value from ${data.source} on ${new Date().toLocaleDateString()}`;
+                    document.getElementById('valueSource').className = 'text-success';
+                } else {
+                    document.getElementById('valueSource').textContent = data.message || 'Unable to fetch property value';
+                    document.getElementById('valueSource').className = 'text-warning';
+                }
+            } catch (error) {
+                console.error('Property value error:', error);
+                document.getElementById('valueSource').textContent = 'Error fetching property value';
+                document.getElementById('valueSource').className = 'text-danger';
+            }
+            
+            button.disabled = false;
+            button.innerHTML = '<i class="bi bi-search"></i> Get Value';
+        });
+        
+        // Form validation
+        document.getElementById('propertyForm').addEventListener('submit', function(e) {
+            const requiredFields = ['name', 'address', 'city', 'state', 'zipCode'];
+            let isValid = true;
+            
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                alert('Please fill in all required fields');
+            }
+        });
+    </script>
+</body>
+</html> 

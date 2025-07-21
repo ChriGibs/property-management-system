@@ -1,0 +1,221 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-dark mb-0">
+      <i class="fas fa-file-contract me-2"></i>Leases
+    </h1>
+    <a href="/leases/new" class="btn btn-primary">
+      <i class="fas fa-plus me-2"></i>Create New Lease
+    </a>
+  </div>
+
+  <!-- Success/Error Messages -->
+  <% if (messages.success && messages.success.length > 0) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <i class="fas fa-check-circle me-2"></i>
+      <%= messages.success.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+  
+  <% if (messages.error && messages.error.length > 0) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <%= messages.error.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+
+  <!-- Leases Table -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-white border-bottom">
+      <h5 class="mb-0">
+        <i class="fas fa-list me-2"></i>All Leases
+        <span class="badge bg-secondary ms-2"><%= leases.length %></span>
+      </h5>
+    </div>
+    <div class="card-body">
+      <% if (leases.length === 0) { %>
+        <div class="text-center py-5">
+          <i class="fas fa-file-contract text-muted" style="font-size: 4rem;"></i>
+          <h4 class="text-muted mt-3">No Leases Found</h4>
+          <p class="text-muted">Start by creating your first lease agreement.</p>
+          <a href="/leases/new" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Create Your First Lease
+          </a>
+        </div>
+      <% } else { %>
+        <div class="table-responsive">
+          <table id="leasesTable" class="table table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Property</th>
+                <th>Tenants</th>
+                <th>Period</th>
+                <th>Monthly Rent</th>
+                <th>Financial Progress</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% leases.forEach(lease => { %>
+                <tr>
+                  <td>
+                    <% if (lease.property) { %>
+                      <div>
+                        <strong>
+                          <a href="/properties/<%= lease.property.id %>" class="text-decoration-none">
+                            <%= lease.property.name || lease.property.address %>
+                          </a>
+                        </strong>
+                        <br><small class="text-muted"><%= lease.property.city %>, <%= lease.property.state %></small>
+                      </div>
+                    <% } else { %>
+                      <span class="text-muted">Unknown Property</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% 
+                      const tenants = [];
+                      if (lease.tenant1) tenants.push(lease.tenant1);
+                      if (lease.tenant2) tenants.push(lease.tenant2);
+                      if (lease.tenant3) tenants.push(lease.tenant3);
+                      if (lease.tenant4) tenants.push(lease.tenant4);
+                    %>
+                    <% if (tenants.length > 0) { %>
+                      <% tenants.forEach((tenant, index) => { %>
+                        <div class="d-flex align-items-center mb-1">
+                          <div class="avatar-circle bg-primary text-white me-2" style="width: 25px; height: 25px; font-size: 10px;">
+                            <%= tenant.firstName.charAt(0) + tenant.lastName.charAt(0) %>
+                          </div>
+                          <a href="/tenants/<%= tenant.id %>" class="text-decoration-none small">
+                            <%= tenant.getFullName() %>
+                          </a>
+                        </div>
+                      <% }) %>
+                    <% } else { %>
+                      <span class="text-muted">No Tenants</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div>
+                      <strong><%= new Date(lease.startDate).toLocaleDateString() %></strong>
+                      <br><small class="text-muted">to <%= new Date(lease.endDate).toLocaleDateString() %></small>
+                    </div>
+                  </td>
+                  <td>
+                    <strong>$<%= new Intl.NumberFormat().format(lease.monthlyRent) %></strong>
+                    <% if (lease.totalLeaseValue) { %>
+                      <br><small class="text-muted">Total: $<%= new Intl.NumberFormat().format(lease.totalLeaseValue) %></small>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (lease.totalLeaseValue && lease.totalAmountPaid !== null) { %>
+                      <% const progress = Math.round((lease.totalAmountPaid / lease.totalLeaseValue) * 100) %>
+                      <div class="progress mb-1" style="height: 8px;">
+                        <div class="progress-bar" style="width: <%= progress %>%"></div>
+                      </div>
+                      <small class="text-muted">
+                        $<%= new Intl.NumberFormat().format(lease.totalAmountPaid || 0) %> / 
+                        $<%= new Intl.NumberFormat().format(lease.totalLeaseValue) %>
+                      </small>
+                    <% } else { %>
+                      <span class="text-muted">—</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <span class="badge bg-<%= lease.status === 'active' ? 'success' : 
+                                         lease.status === 'pending' ? 'warning' : 
+                                         lease.status === 'expired' ? 'secondary' : 'danger' %>">
+                      <%= lease.status.charAt(0).toUpperCase() + lease.status.slice(1) %>
+                    </span>
+                    <% if (lease.status !== 'active') { %>
+                      <form action="/leases/<%= lease.id %>/activate" method="POST" style="display: inline;">
+                        <button type="submit" class="btn btn-outline-success btn-sm mt-1" title="Activate Lease">
+                          <i class="fas fa-play"></i>
+                        </button>
+                      </form>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <a href="/leases/<%= lease.id %>" class="btn btn-outline-primary" title="View Details">
+                        <i class="fas fa-eye"></i>
+                      </a>
+                      <a href="/leases/<%= lease.id %>/edit" class="btn btn-outline-secondary" title="Edit">
+                        <i class="fas fa-edit"></i>
+                      </a>
+                      <button class="btn btn-outline-danger" title="Delete" 
+                              onclick="confirmDelete(<%= lease.id %>, '<%= lease.property ? (lease.property.name || lease.property.address) : 'Property' %>')">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete the lease for <strong id="propertyName"></strong>?</p>
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          This action cannot be undone. The lease and all related data will be permanently removed.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteForm" method="POST" style="display: inline;">
+          <input type="hidden" name="_method" value="DELETE">
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash me-2"></i>Delete Lease
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Initialize DataTable
+$(document).ready(function() {
+  $('#leasesTable').DataTable({
+    responsive: true,
+    pageLength: 25,
+    order: [[2, 'desc']], // Sort by start date
+    columnDefs: [
+      { orderable: false, targets: [6] }
+    ],
+    language: {
+      search: "Search leases:",
+      lengthMenu: "Show _MENU_ leases per page",
+      info: "Showing _START_ to _END_ of _TOTAL_ leases",
+      emptyTable: "No leases found"
+    }
+  });
+});
+
+function confirmDelete(leaseId, propertyName) {
+  document.getElementById('propertyName').textContent = propertyName;
+  document.getElementById('deleteForm').action = `/leases/${leaseId}`;
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+
+<%- include('../partials/footer') %> 

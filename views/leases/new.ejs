@@ -1,0 +1,361 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-dark mb-0">
+      <i class="fas fa-file-contract me-2"></i>Create New Lease
+    </h1>
+    <a href="/leases" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-2"></i>Back to Leases
+    </a>
+  </div>
+
+  <!-- Success/Error Messages -->
+  <% if (messages.error && messages.error.length > 0) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <%= messages.error.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+
+  <!-- Lease Form -->
+  <div class="row">
+    <div class="col-lg-10 mx-auto">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white border-bottom">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>Lease Agreement Details
+          </h5>
+        </div>
+        <div class="card-body">
+          <form action="/leases" method="POST" id="leaseForm">
+            <!-- Property Selection -->
+            <div class="row">
+              <div class="col-md-12 mb-4">
+                <label for="propertyId" class="form-label">Property <span class="text-danger">*</span></label>
+                <select class="form-select" id="propertyId" name="propertyId" required>
+                  <option value="">Select a property...</option>
+                  <% properties.forEach(property => { %>
+                    <option value="<%= property.id %>">
+                      <%= property.name || property.address %> - <%= property.city %>, <%= property.state %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
+
+            <!-- Tenant Selection -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-users me-2"></i>Tenants (Select up to 4)
+            </h6>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="tenant1Id" class="form-label">Primary Tenant <span class="text-danger">*</span></label>
+                <select class="form-select" id="tenant1Id" name="tenant1Id" required>
+                  <option value="">Select primary tenant...</option>
+                  <% tenants.forEach(tenant => { %>
+                    <option value="<%= tenant.id %>">
+                      <%= tenant.getFullName() %> - <%= tenant.email %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="tenant2Id" class="form-label">Second Tenant (Optional)</label>
+                <select class="form-select" id="tenant2Id" name="tenant2Id">
+                  <option value="">Select second tenant...</option>
+                  <% tenants.forEach(tenant => { %>
+                    <option value="<%= tenant.id %>">
+                      <%= tenant.getFullName() %> - <%= tenant.email %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="tenant3Id" class="form-label">Third Tenant (Optional)</label>
+                <select class="form-select" id="tenant3Id" name="tenant3Id">
+                  <option value="">Select third tenant...</option>
+                  <% tenants.forEach(tenant => { %>
+                    <option value="<%= tenant.id %>">
+                      <%= tenant.getFullName() %> - <%= tenant.email %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="tenant4Id" class="form-label">Fourth Tenant (Optional)</label>
+                <select class="form-select" id="tenant4Id" name="tenant4Id">
+                  <option value="">Select fourth tenant...</option>
+                  <% tenants.forEach(tenant => { %>
+                    <option value="<%= tenant.id %>">
+                      <%= tenant.getFullName() %> - <%= tenant.email %>
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+            </div>
+
+            <!-- Lease Terms -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-calendar me-2"></i>Lease Terms
+            </h6>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="startDate" class="form-label">Start Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="startDate" name="startDate" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="endDate" class="form-label">End Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="endDate" name="endDate" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="leaseType" class="form-label">Lease Type</label>
+                <select class="form-select" id="leaseType" name="leaseType">
+                  <option value="fixed-term">Fixed Term</option>
+                  <option value="month-to-month">Month-to-Month</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="signedDate" class="form-label">Signed Date</label>
+                <input type="date" class="form-control" id="signedDate" name="signedDate">
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="alert alert-info">
+                  <i class="fas fa-info-circle me-2"></i>
+                  <strong>Duration:</strong> <span id="leaseDuration">Select dates to calculate</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Financial Details -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-dollar-sign me-2"></i>Financial Details
+            </h6>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="monthlyRent" class="form-label">Monthly Rent <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="monthlyRent" name="monthlyRent" 
+                         placeholder="0.00" step="0.01" min="0" required>
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="securityDeposit" class="form-label">Security Deposit</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="securityDeposit" name="securityDeposit" 
+                         placeholder="0.00" step="0.01" min="0">
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="petDeposit" class="form-label">Pet Deposit</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="petDeposit" name="petDeposit" 
+                         placeholder="0.00" step="0.01" min="0">
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="rentDueDay" class="form-label">Rent Due Day</label>
+                <select class="form-select" id="rentDueDay" name="rentDueDay">
+                  <% for (let i = 1; i <= 31; i++) { %>
+                    <option value="<%= i %>" <%= i === 1 ? 'selected' : '' %>><%= i %></option>
+                  <% } %>
+                </select>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="lateFeeAmount" class="form-label">Late Fee Amount</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="lateFeeAmount" name="lateFeeAmount" 
+                         placeholder="0.00" step="0.01" min="0">
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="lateFeeDaysAfterDue" class="form-label">Late Fee Days After Due</label>
+                <input type="number" class="form-control" id="lateFeeDaysAfterDue" name="lateFeeDaysAfterDue" 
+                       placeholder="5" min="1" max="30">
+              </div>
+            </div>
+
+            <!-- Calculated Totals -->
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <div class="card bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title">
+                      <i class="fas fa-calculator me-2"></i>Calculated Lease Value
+                    </h6>
+                    <div class="row">
+                      <div class="col-md-4">
+                        <strong>Total Lease Value:</strong>
+                        <div class="h5 text-primary" id="totalLeaseValue">$0.00</div>
+                      </div>
+                      <div class="col-md-4">
+                        <strong>Total Amount Paid:</strong>
+                        <div class="h5 text-success">$0.00</div>
+                        <small class="text-muted">(Initially $0)</small>
+                      </div>
+                      <div class="col-md-4">
+                        <strong>Amount Remaining:</strong>
+                        <div class="h5 text-warning" id="totalAmountRemaining">$0.00</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Additional Notes -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-sticky-note me-2"></i>Additional Information
+            </h6>
+
+            <div class="mb-3">
+              <label for="notes" class="form-label">Notes</label>
+              <textarea class="form-control" id="notes" name="notes" rows="4" 
+                        placeholder="Any additional terms, conditions, or notes about this lease..."></textarea>
+            </div>
+
+            <!-- Form Actions -->
+            <hr class="my-4">
+            <div class="d-flex justify-content-between">
+              <a href="/leases" class="btn btn-outline-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Create Lease
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('leaseForm');
+  const startDateInput = document.getElementById('startDate');
+  const endDateInput = document.getElementById('endDate');
+  const monthlyRentInput = document.getElementById('monthlyRent');
+  const leaseDurationElement = document.getElementById('leaseDuration');
+  const totalLeaseValueElement = document.getElementById('totalLeaseValue');
+  const totalAmountRemainingElement = document.getElementById('totalAmountRemaining');
+
+  // Set default start date to today
+  const today = new Date().toISOString().split('T')[0];
+  startDateInput.value = today;
+
+  // Set default end date to one year from today
+  const oneYearLater = new Date();
+  oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
+  endDateInput.value = oneYearLater.toISOString().split('T')[0];
+
+  function calculateLeaseValue() {
+    const startDate = new Date(startDateInput.value);
+    const endDate = new Date(endDateInput.value);
+    const monthlyRent = parseFloat(monthlyRentInput.value) || 0;
+
+    if (startDate && endDate && endDate > startDate) {
+      // Calculate duration in months
+      const diffTime = endDate - startDate;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffMonths = Math.ceil(diffDays / 30.44); // Average month length
+
+      leaseDurationElement.textContent = `${diffMonths} months (${diffDays} days)`;
+
+      const totalValue = monthlyRent * diffMonths;
+      totalLeaseValueElement.textContent = `$${totalValue.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+      totalAmountRemainingElement.textContent = `$${totalValue.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    } else {
+      leaseDurationElement.textContent = 'Select valid dates to calculate';
+      totalLeaseValueElement.textContent = '$0.00';
+      totalAmountRemainingElement.textContent = '$0.00';
+    }
+  }
+
+  // Calculate lease value when dates or rent change
+  startDateInput.addEventListener('change', calculateLeaseValue);
+  endDateInput.addEventListener('change', calculateLeaseValue);
+  monthlyRentInput.addEventListener('input', calculateLeaseValue);
+
+  // Prevent selecting the same tenant multiple times
+  const tenantSelects = [
+    document.getElementById('tenant1Id'),
+    document.getElementById('tenant2Id'),
+    document.getElementById('tenant3Id'),
+    document.getElementById('tenant4Id')
+  ];
+
+  tenantSelects.forEach((select, index) => {
+    select.addEventListener('change', function() {
+      const selectedValue = this.value;
+      
+      // Clear this selection from other dropdowns
+      tenantSelects.forEach((otherSelect, otherIndex) => {
+        if (otherIndex !== index && otherSelect.value === selectedValue && selectedValue !== '') {
+          otherSelect.value = '';
+        }
+      });
+    });
+  });
+
+  // Initial calculation
+  calculateLeaseValue();
+
+  // Form validation
+  form.addEventListener('submit', function(e) {
+    const propertyId = document.getElementById('propertyId').value;
+    const tenant1Id = document.getElementById('tenant1Id').value;
+    const startDate = startDateInput.value;
+    const endDate = endDateInput.value;
+    const monthlyRent = monthlyRentInput.value;
+
+    if (!propertyId || !tenant1Id || !startDate || !endDate || !monthlyRent) {
+      e.preventDefault();
+      alert('Please fill in all required fields (Property, Primary Tenant, Start Date, End Date, and Monthly Rent).');
+      return;
+    }
+
+    if (new Date(startDate) >= new Date(endDate)) {
+      e.preventDefault();
+      alert('End date must be after start date.');
+      return;
+    }
+
+    if (parseFloat(monthlyRent) <= 0) {
+      e.preventDefault();
+      alert('Monthly rent must be greater than $0.');
+      return;
+    }
+
+    // Show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Lease...';
+    submitBtn.disabled = true;
+  });
+});
+</script>
+
+<%- include('../partials/footer') %> 

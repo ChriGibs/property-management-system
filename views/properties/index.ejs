@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> - Property Management</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+        }
+        
+        .sidebar .nav-link {
+            color: #333;
+        }
+        
+        .sidebar .nav-link:hover {
+            color: #0d6efd;
+        }
+        
+        .sidebar .nav-link.active {
+            background-color: #0d6efd;
+            color: white;
+        }
+        
+        .main-content {
+            padding-left: 0;
+        }
+        
+        @media (min-width: 768px) {
+            .main-content {
+                padding-left: 250px;
+            }
+        }
+        
+        .table td {
+            vertical-align: middle;
+        }
+        
+        .property-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-building"></i> Property Management
+            </a>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i> <%= user.firstName %> <%= user.lastName %>
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/dashboard">Dashboard</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form action="/auth/logout" method="POST" class="d-inline">
+                                    <button type="submit" class="dropdown-item">Logout</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div class="container-fluid">
+        <div class="row">
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse position-fixed">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="/dashboard">
+                                <i class="bi bi-speedometer2"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/properties">
+                                <i class="bi bi-building"></i> Properties
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/tenants">
+                                <i class="bi bi-people"></i> Tenants
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/leases">
+                                <i class="bi bi-file-text"></i> Leases
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/invoices">
+                                <i class="bi bi-receipt"></i> Invoices
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="/payments">
+                                <i class="bi bi-credit-card"></i> Payments
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main content -->
+    <main class="main-content">
+        <div class="container-fluid px-4 py-3">
+            <!-- Flash messages -->
+            <% if (messages.success) { %>
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <%= messages.success %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+            
+            <% if (messages.error) { %>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <%= messages.error %>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            <% } %>
+
+            <!-- Page Header -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">
+                    <i class="bi bi-building"></i> Properties
+                </h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <a href="/properties/new" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Add Property
+                    </a>
+                </div>
+            </div>
+
+            <!-- Properties Summary -->
+            <% if (properties && properties.length > 0) { %>
+                <div class="property-summary">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="display-6"><%= properties.length %></div>
+                            <div>Total Properties</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="display-6">
+                                <%= properties.filter(p => p.leases && p.leases.some(l => l.status === 'active')).length %>
+                            </div>
+                            <div>Occupied</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="display-6">
+                                <%= properties.filter(p => !p.leases || !p.leases.some(l => l.status === 'active')).length %>
+                            </div>
+                            <div>Vacant</div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="display-6">
+                                $<%= properties.reduce((sum, p) => {
+                                    const activeLeases = p.leases ? p.leases.filter(l => l.status === 'active') : [];
+                                    return sum + activeLeases.reduce((total, l) => total + parseFloat(l.monthlyRent || 0), 0);
+                                }, 0).toLocaleString() %>
+                            </div>
+                            <div>Monthly Revenue</div>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+
+            <!-- Properties Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-table"></i> Property Portfolio
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <% if (properties && properties.length > 0) { %>
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="propertiesTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Property Name</th>
+                                        <th>Address</th>
+                                        <th>Type</th>
+                                        <th>Beds/Baths</th>
+                                        <th>Purchase Price</th>
+                                        <th>Current Value</th>
+                                        <th>Current Tenant</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <% properties.forEach(property => { %>
+                                        <tr>
+                                            <td>
+                                                <strong><%= property.name || property.address %></strong>
+                                            </td>
+                                            <td>
+                                                <%= property.address %><br>
+                                                <small class="text-muted">
+                                                    <%= property.city %>, <%= property.state %> <%= property.zipCode %>
+                                                    <% if (property.county) { %> • <%= property.county %><% } %>
+                                                </small>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-secondary">
+                                                    <%= property.propertyType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase()) %>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <i class="bi bi-door-closed text-muted"></i> <%= property.bedrooms %> • 
+                                                <i class="bi bi-droplet text-muted"></i> <%= property.bathrooms %>
+                                                <% if (property.squareFootage) { %>
+                                                    <br><small class="text-muted"><%= property.squareFootage.toLocaleString() %> sq ft</small>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if (property.purchasePrice) { %>
+                                                    $<%= parseFloat(property.purchasePrice).toLocaleString() %>
+                                                    <% if (property.purchaseDate) { %>
+                                                        <br><small class="text-muted"><%= new Date(property.purchaseDate).getFullYear() %></small>
+                                                    <% } %>
+                                                <% } else { %>
+                                                    <span class="text-muted">—</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                <% if (property.currentValue) { %>
+                                                    $<%= parseFloat(property.currentValue).toLocaleString() %>
+                                                    <% if (property.currentValueDate) { %>
+                                                        <br><small class="text-muted"><%= new Date(property.currentValueDate).toLocaleDateString() %></small>
+                                                    <% } %>
+                                                    <% if (property.purchasePrice && property.currentValue) { %>
+                                                        <% const appreciation = ((property.currentValue - property.purchasePrice) / property.purchasePrice * 100).toFixed(1) %>
+                                                        <br><small class="badge bg-<%= appreciation >= 0 ? 'success' : 'danger' %> text-white">
+                                                            <%= appreciation >= 0 ? '+' : '' %><%= appreciation %>%
+                                                        </small>
+                                                    <% } %>
+                                                <% } else { %>
+                                                    <span class="text-muted">—</span>
+                                                <% } %>
+                                            </td>
+                                            <td>
+                                                                                <% if (property.leases && property.leases.length > 0) { %>
+                                    <% const activeLease = property.leases.find(l => l.status === 'active') %>
+                                    <% if (activeLease) { %>
+                                        <% 
+                                            const tenants = [];
+                                            if (activeLease.tenant1) tenants.push(activeLease.tenant1);
+                                            if (activeLease.tenant2) tenants.push(activeLease.tenant2);
+                                            if (activeLease.tenant3) tenants.push(activeLease.tenant3);
+                                            if (activeLease.tenant4) tenants.push(activeLease.tenant4);
+                                        %>
+                                        <% if (tenants.length > 0) { %>
+                                            <div>
+                                                <strong>
+                                                    <% if (tenants.length === 1) { %>
+                                                        <%= tenants[0].firstName %> <%= tenants[0].lastName %>
+                                                    <% } else { %>
+                                                        <%= tenants[0].firstName %> <%= tenants[0].lastName %> 
+                                                        <small class="text-muted">+<%= tenants.length - 1 %> more</small>
+                                                    <% } %>
+                                                </strong>
+                                                <br><small class="text-success">
+                                                    <i class="bi bi-currency-dollar"></i><%= parseFloat(activeLease.monthlyRent).toLocaleString() %>/mo
+                                                </small>
+                                            </div>
+                                        <% } else { %>
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="bi bi-house-x"></i> Vacant
+                                            </span>
+                                        <% } %>
+                                    <% } else { %>
+                                        <span class="badge bg-warning text-dark">
+                                            <i class="bi bi-house-x"></i> Vacant
+                                        </span>
+                                    <% } %>
+                                <% } else { %>
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-house-x"></i> Vacant
+                                    </span>
+                                <% } %>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-<%= property.isActive ? 'success' : 'danger' %>">
+                                                    <%= property.isActive ? 'Active' : 'Inactive' %>
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div class="btn-group" role="group">
+                                                    <a href="/properties/<%= property.id %>" class="btn btn-sm btn-outline-primary" title="View Details">
+                                                        <i class="bi bi-eye"></i>
+                                                    </a>
+                                                    <a href="/properties/<%= property.id %>/edit" class="btn btn-sm btn-outline-secondary" title="Edit Property">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                            title="Delete Property" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#deleteModal<%= property.id %>">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                </tbody>
+                            </table>
+                        </div>
+                    <% } else { %>
+                        <div class="text-center py-5">
+                            <div class="mb-3">
+                                <i class="bi bi-building display-1 text-muted"></i>
+                            </div>
+                            <h5>No Properties Added Yet</h5>
+                            <p class="text-muted mb-3">Start building your rental portfolio by adding your first property.</p>
+                            <a href="/properties/new" class="btn btn-primary btn-lg">
+                                <i class="bi bi-plus-circle"></i> Add Your First Property
+                            </a>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Delete Modals for each property -->
+            <% if (properties && properties.length > 0) { %>
+                <% properties.forEach(property => { %>
+                    <div class="modal fade" id="deleteModal<%= property.id %>" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title text-danger">
+                                        <i class="bi bi-exclamation-triangle"></i> Delete Property
+                                    </h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Are you sure you want to delete "<strong><%= property.name || property.address %></strong>"?</p>
+                                    <p class="text-danger">
+                                        <i class="bi bi-exclamation-circle"></i> 
+                                        This action cannot be undone. All associated data will be permanently deleted.
+                                    </p>
+                                    <% const hasActiveLeases = property.leases && property.leases.some(l => l.status === 'active') %>
+                                    <% if (hasActiveLeases) { %>
+                                        <div class="alert alert-warning">
+                                            <i class="bi bi-exclamation-triangle"></i> 
+                                            This property has active leases and cannot be deleted. Please terminate all leases first.
+                                        </div>
+                                    <% } %>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <% if (!hasActiveLeases) { %>
+                                        <form action="/properties/<%= property.id %>?_method=DELETE" method="POST" class="d-inline">
+                                            <button type="submit" class="btn btn-danger">
+                                                <i class="bi bi-trash"></i> Delete Property
+                                            </button>
+                                        </form>
+                                    <% } else { %>
+                                        <button type="button" class="btn btn-danger" disabled>
+                                            <i class="bi bi-trash"></i> Cannot Delete (Active Leases)
+                                        </button>
+                                    <% } %>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } %>
+        </div>
+    </main>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery (required for DataTables) -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    
+    <% if (properties && properties.length > 0) { %>
+    <script>
+        $(document).ready(function() {
+            // Initialize DataTable
+            $('#propertiesTable').DataTable({
+                responsive: true,
+                pageLength: 10,
+                language: {
+                    search: "Search properties:",
+                    lengthMenu: "Show _MENU_ properties per page",
+                    info: "Showing _START_ to _END_ of _TOTAL_ properties",
+                    paginate: {
+                        first: "First",
+                        last: "Last",
+                        next: "Next",
+                        previous: "Previous"
+                    }
+                },
+                columnDefs: [
+                    { orderable: false, targets: [-1] } // Disable sorting on Actions column
+                ],
+                order: [[0, 'asc']] // Default sort by property name
+            });
+        });
+    </script>
+    <% } %>
+</body>
+</html> 

@@ -1,0 +1,218 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-dark mb-0">
+      <i class="fas fa-users me-2"></i>Tenants
+    </h1>
+    <a href="/tenants/new" class="btn btn-primary">
+      <i class="fas fa-plus me-2"></i>Add New Tenant
+    </a>
+  </div>
+
+  <!-- Success/Error Messages -->
+  <% if (messages.success && messages.success.length > 0) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+      <i class="fas fa-check-circle me-2"></i>
+      <%= messages.success.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+  
+  <% if (messages.error && messages.error.length > 0) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <%= messages.error.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+
+  <!-- Tenants Table -->
+  <div class="card shadow-sm">
+    <div class="card-header bg-white border-bottom">
+      <h5 class="mb-0">
+        <i class="fas fa-list me-2"></i>All Tenants
+        <span class="badge bg-secondary ms-2"><%= tenants.length %></span>
+      </h5>
+    </div>
+    <div class="card-body">
+      <% if (tenants.length === 0) { %>
+        <div class="text-center py-5">
+          <i class="fas fa-users text-muted" style="font-size: 4rem;"></i>
+          <h4 class="text-muted mt-3">No Tenants Found</h4>
+          <p class="text-muted">Start by adding your first tenant to the system.</p>
+          <a href="/tenants/new" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Add Your First Tenant
+          </a>
+        </div>
+      <% } else { %>
+        <div class="table-responsive">
+          <table id="tenantsTable" class="table table-hover">
+            <thead class="table-light">
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Employment</th>
+                <th>Active Leases</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% tenants.forEach(tenant => { %>
+                <tr>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="flex-shrink-0">
+                        <div class="avatar-circle bg-primary text-white">
+                          <%= tenant.firstName.charAt(0) + tenant.lastName.charAt(0) %>
+                        </div>
+                      </div>
+                      <div class="flex-grow-1 ms-3">
+                        <h6 class="mb-0">
+                          <a href="/tenants/<%= tenant.id %>" class="text-decoration-none">
+                            <%= tenant.getFullName() %>
+                          </a>
+                        </h6>
+                        <small class="text-muted">ID: <%= tenant.id %></small>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <a href="mailto:<%= tenant.email %>" class="text-decoration-none">
+                      <%= tenant.email %>
+                    </a>
+                  </td>
+                  <td>
+                    <% if (tenant.phone) { %>
+                      <a href="tel:<%= tenant.phone %>" class="text-decoration-none">
+                        <%= tenant.phone %>
+                      </a>
+                    <% } else { %>
+                      <span class="text-muted">—</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (tenant.employerName) { %>
+                      <div>
+                        <strong><%= tenant.employerName %></strong>
+                        <% if (tenant.monthlyIncome) { %>
+                          <br><small class="text-muted">$<%= new Intl.NumberFormat().format(tenant.monthlyIncome) %>/mo</small>
+                        <% } %>
+                      </div>
+                    <% } else { %>
+                      <span class="text-muted">—</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (tenant.leases && tenant.leases.length > 0) { %>
+                      <% tenant.leases.forEach(lease => { %>
+                        <span class="badge bg-success mb-1">
+                          <%= lease.property ? lease.property.name : 'Property' %>
+                        </span>
+                      <% }) %>
+                    <% } else { %>
+                      <span class="text-muted">No active leases</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (tenant.isActive) { %>
+                      <span class="badge bg-success">Active</span>
+                    <% } else { %>
+                      <span class="badge bg-secondary">Inactive</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <a href="/tenants/<%= tenant.id %>" class="btn btn-outline-primary" title="View Details">
+                        <i class="fas fa-eye"></i>
+                      </a>
+                      <a href="/tenants/<%= tenant.id %>/edit" class="btn btn-outline-secondary" title="Edit">
+                        <i class="fas fa-edit"></i>
+                      </a>
+                      <button class="btn btn-outline-danger" title="Delete" 
+                              onclick="confirmDelete(<%= tenant.id %>, '<%= tenant.getFullName() %>')">
+                        <i class="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Deletion</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete <strong id="tenantName"></strong>?</p>
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          This action cannot be undone. The tenant will be permanently removed from the system.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteForm" method="POST" style="display: inline;">
+          <input type="hidden" name="_method" value="DELETE">
+          <button type="submit" class="btn btn-danger">
+            <i class="fas fa-trash me-2"></i>Delete Tenant
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.avatar-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+</style>
+
+<script>
+// Initialize DataTable
+$(document).ready(function() {
+  $('#tenantsTable').DataTable({
+    responsive: true,
+    pageLength: 25,
+    order: [[0, 'asc']],
+    columnDefs: [
+      { orderable: false, targets: [6] }
+    ],
+    language: {
+      search: "Search tenants:",
+      lengthMenu: "Show _MENU_ tenants per page",
+      info: "Showing _START_ to _END_ of _TOTAL_ tenants",
+      emptyTable: "No tenants found"
+    }
+  });
+});
+
+function confirmDelete(tenantId, tenantName) {
+  document.getElementById('tenantName').textContent = tenantName;
+  document.getElementById('deleteForm').action = `/tenants/${tenantId}`;
+  new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+
+<%- include('../partials/footer') %> 

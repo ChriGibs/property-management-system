@@ -1,0 +1,168 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-dark mb-0">
+      <i class="fas fa-user-plus me-2"></i>Add New Tenant
+    </h1>
+    <a href="/tenants" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-2"></i>Back to Tenants
+    </a>
+  </div>
+
+  <!-- Success/Error Messages -->
+  <% if (messages.error && messages.error.length > 0) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <%= messages.error.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+
+  <!-- Tenant Form -->
+  <div class="row">
+    <div class="col-lg-8 mx-auto">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white border-bottom">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>Tenant Information
+          </h5>
+        </div>
+        <div class="card-body">
+          <form action="/tenants" method="POST" id="tenantForm">
+            <!-- Basic Information -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="firstName" class="form-label">First Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="firstName" name="firstName" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="lastName" class="form-label">Last Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="lastName" name="lastName" required>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" id="email" name="email" required>
+                <div class="form-text">Used for login and communication</div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="phone" class="form-label">Phone Number</label>
+                <input type="tel" class="form-control" id="phone" name="phone" placeholder="(555) 123-4567">
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" class="form-control" id="password" name="password">
+              <div class="form-text">Leave blank if tenant won't need login access</div>
+            </div>
+
+            <!-- Employment Information -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-briefcase me-2"></i>Employment Information
+            </h6>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="employerName" class="form-label">Employer</label>
+                <input type="text" class="form-control" id="employerName" name="employerName" placeholder="Company name">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="monthlyIncome" class="form-label">Monthly Income</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="monthlyIncome" name="monthlyIncome" 
+                         placeholder="0.00" step="0.01" min="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- Emergency Contact -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-phone me-2"></i>Emergency Contact
+            </h6>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="emergencyContactName" class="form-label">Contact Name</label>
+                <input type="text" class="form-control" id="emergencyContactName" name="emergencyContactName" 
+                       placeholder="Full name">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="emergencyContactPhone" class="form-label">Contact Phone</label>
+                <input type="tel" class="form-control" id="emergencyContactPhone" name="emergencyContactPhone" 
+                       placeholder="(555) 123-4567">
+              </div>
+            </div>
+
+            <!-- Form Actions -->
+            <hr class="my-4">
+            <div class="d-flex justify-content-between">
+              <a href="/tenants" class="btn btn-outline-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+              </a>
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save me-2"></i>Add Tenant
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Form validation and enhancement
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('tenantForm');
+  
+  // Phone number formatting
+  const phoneInputs = document.querySelectorAll('input[type="tel"]');
+  phoneInputs.forEach(input => {
+    input.addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length >= 6) {
+        value = value.replace(/(\d{3})(\d{3})(\d{4})/, '($1) $2-$3');
+      } else if (value.length >= 3) {
+        value = value.replace(/(\d{3})(\d{0,3})/, '($1) $2');
+      }
+      e.target.value = value;
+    });
+  });
+
+  // Form submission
+  form.addEventListener('submit', function(e) {
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const email = document.getElementById('email').value.trim();
+
+    if (!firstName || !lastName || !email) {
+      e.preventDefault();
+      alert('Please fill in all required fields (First Name, Last Name, and Email).');
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      e.preventDefault();
+      alert('Please enter a valid email address.');
+      return;
+    }
+
+    // Show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Adding Tenant...';
+    submitBtn.disabled = true;
+  });
+});
+</script>
+
+<%- include('../partials/footer') %> 

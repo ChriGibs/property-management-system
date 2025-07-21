@@ -1,0 +1,349 @@
+<%- include('../partials/header') %>
+
+<div class="container-fluid">
+  <!-- Page Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 text-dark mb-0">
+      <i class="fas fa-file-invoice me-2"></i>Create New Invoice
+    </h1>
+    <a href="/invoices" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-2"></i>Back to Invoices
+    </a>
+  </div>
+
+  <!-- Success/Error Messages -->
+  <% if (messages.error && messages.error.length > 0) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      <%= messages.error.join(', ') %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+  <% } %>
+
+  <!-- Invoice Form -->
+  <div class="row">
+    <div class="col-lg-10 mx-auto">
+      <div class="card shadow-sm">
+        <div class="card-header bg-white border-bottom">
+          <h5 class="mb-0">
+            <i class="fas fa-info-circle me-2"></i>Invoice Details
+          </h5>
+        </div>
+        <div class="card-body">
+          <form action="/invoices" method="POST" id="invoiceForm">
+            <!-- Lease Selection -->
+            <div class="row">
+              <div class="col-md-12 mb-4">
+                <label for="leaseId" class="form-label">Associated Lease (Optional)</label>
+                <select class="form-select" id="leaseId" name="leaseId">
+                  <option value="">No lease - General invoice</option>
+                  <% leases.forEach(lease => { %>
+                    <option value="<%= lease.id %>" 
+                            <%= selectedLease && selectedLease.id == lease.id ? 'selected' : '' %>
+                            data-monthly-rent="<%= lease.monthlyRent %>"
+                            data-due-day="<%= lease.rentDueDay %>">
+                      <% if (lease.property) { %>
+                        <%= lease.property.name || lease.property.address %> - 
+                        <%= lease.property.city %>, <%= lease.property.state %>
+                      <% } %>
+                      <% if (lease.tenant1) { %>
+                        (<%= lease.tenant1.getFullName() %>)
+                      <% } %>
+                    </option>
+                  <% }) %>
+                </select>
+                <div class="form-text">Select a lease to auto-populate rent amount and period</div>
+              </div>
+            </div>
+
+            <!-- Invoice Dates -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-calendar me-2"></i>Invoice Dates
+            </h6>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="invoiceDate" class="form-label">Invoice Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="invoiceDate" name="invoiceDate" 
+                       value="<%= new Date().toISOString().split('T')[0] %>" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="dueDate" class="form-label">Due Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" id="dueDate" name="dueDate" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Auto-set Due Date</label>
+                <div class="btn-group w-100" role="group">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDueDate(7)">+7 days</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDueDate(15)">+15 days</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setDueDate(30)">+30 days</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Billing Period -->
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="periodStart" class="form-label">Billing Period Start</label>
+                <input type="date" class="form-control" id="periodStart" name="periodStart">
+                <div class="form-text">Leave blank for non-recurring charges</div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="periodEnd" class="form-label">Billing Period End</label>
+                <input type="date" class="form-control" id="periodEnd" name="periodEnd">
+              </div>
+            </div>
+
+            <!-- Charges -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-dollar-sign me-2"></i>Charges
+            </h6>
+
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label for="rentAmount" class="form-label">Rent Amount</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="rentAmount" name="rentAmount" 
+                         placeholder="0.00" step="0.01" min="0">
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="lateFeeAmount" class="form-label">Late Fee</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="lateFeeAmount" name="lateFeeAmount" 
+                         placeholder="0.00" step="0.01" min="0">
+                </div>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label for="otherCharges" class="form-label">Other Charges</label>
+                <div class="input-group">
+                  <span class="input-group-text">$</span>
+                  <input type="number" class="form-control" id="otherCharges" name="otherCharges" 
+                         placeholder="0.00" step="0.01" min="0">
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <label for="otherChargesDescription" class="form-label">Other Charges Description</label>
+                <input type="text" class="form-control" id="otherChargesDescription" name="otherChargesDescription" 
+                       placeholder="e.g., Pet fee, Parking, Utilities">
+              </div>
+            </div>
+
+            <!-- Total Calculation -->
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <div class="card bg-light">
+                  <div class="card-body">
+                    <h6 class="card-title">
+                      <i class="fas fa-calculator me-2"></i>Invoice Total
+                    </h6>
+                    <div class="row">
+                      <div class="col-md-3">
+                        <strong>Rent:</strong>
+                        <div class="h5 text-info" id="displayRent">$0.00</div>
+                      </div>
+                      <div class="col-md-3">
+                        <strong>Late Fee:</strong>
+                        <div class="h5 text-warning" id="displayLateFee">$0.00</div>
+                      </div>
+                      <div class="col-md-3">
+                        <strong>Other Charges:</strong>
+                        <div class="h5 text-secondary" id="displayOther">$0.00</div>
+                      </div>
+                      <div class="col-md-3">
+                        <strong>Total Amount:</strong>
+                        <div class="h4 text-primary" id="displayTotal">$0.00</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <hr class="my-4">
+            <h6 class="text-muted mb-3">
+              <i class="fas fa-sticky-note me-2"></i>Additional Information
+            </h6>
+
+            <div class="mb-3">
+              <label for="notes" class="form-label">Notes</label>
+              <textarea class="form-control" id="notes" name="notes" rows="4" 
+                        placeholder="Any additional notes or terms for this invoice..."></textarea>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="row">
+              <div class="col-md-12 mb-3">
+                <div class="alert alert-info">
+                  <i class="fas fa-lightbulb me-2"></i>
+                  <strong>Quick Setup:</strong>
+                  <button type="button" class="btn btn-sm btn-outline-primary ms-2" onclick="setupMonthlyRent()">
+                    Current Month Rent
+                  </button>
+                  <button type="button" class="btn btn-sm btn-outline-warning ms-2" onclick="setupWithLateFee()">
+                    Rent + Late Fee
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Form Actions -->
+            <hr class="my-4">
+            <div class="d-flex justify-content-between">
+              <a href="/invoices" class="btn btn-outline-secondary">
+                <i class="fas fa-times me-2"></i>Cancel
+              </a>
+              <div>
+                <button type="button" class="btn btn-outline-primary me-2" onclick="setDraftAndSubmit()">
+                  <i class="fas fa-save me-2"></i>Save as Draft
+                </button>
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-paper-plane me-2"></i>Create & Send
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('invoiceForm');
+  const leaseSelect = document.getElementById('leaseId');
+  const rentAmountInput = document.getElementById('rentAmount');
+  const lateFeeInput = document.getElementById('lateFeeAmount');
+  const otherChargesInput = document.getElementById('otherCharges');
+  const dueDateInput = document.getElementById('dueDate');
+  const periodStartInput = document.getElementById('periodStart');
+  const periodEndInput = document.getElementById('periodEnd');
+
+  // Set default due date (15 days from today)
+  setDueDate(15);
+
+  // Auto-populate based on lease selection
+  leaseSelect.addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    
+    if (selectedOption.value) {
+      const monthlyRent = selectedOption.dataset.monthlyRent;
+      const dueDay = selectedOption.dataset.dueDay;
+      
+      if (monthlyRent) {
+        rentAmountInput.value = monthlyRent;
+      }
+      
+      // Set period for current month
+      setupCurrentMonthPeriod();
+    } else {
+      rentAmountInput.value = '';
+    }
+    
+    calculateTotal();
+  });
+
+  // Calculate total when amounts change
+  [rentAmountInput, lateFeeInput, otherChargesInput].forEach(input => {
+    input.addEventListener('input', calculateTotal);
+  });
+
+  // Initial calculation
+  calculateTotal();
+
+  function calculateTotal() {
+    const rent = parseFloat(rentAmountInput.value) || 0;
+    const lateFee = parseFloat(lateFeeInput.value) || 0;
+    const other = parseFloat(otherChargesInput.value) || 0;
+    const total = rent + lateFee + other;
+
+    document.getElementById('displayRent').textContent = `$${rent.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('displayLateFee').textContent = `$${lateFee.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('displayOther').textContent = `$${other.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+    document.getElementById('displayTotal').textContent = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+  }
+
+  function setupCurrentMonthPeriod() {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    periodStartInput.value = startOfMonth.toISOString().split('T')[0];
+    periodEndInput.value = endOfMonth.toISOString().split('T')[0];
+  }
+
+  // Form submission
+  form.addEventListener('submit', function(e) {
+    const total = parseFloat(rentAmountInput.value || 0) + 
+                  parseFloat(lateFeeInput.value || 0) + 
+                  parseFloat(otherChargesInput.value || 0);
+
+    if (total <= 0) {
+      e.preventDefault();
+      alert('Please enter at least one charge amount greater than $0.');
+      return;
+    }
+
+    // Show loading state
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Invoice...';
+    submitBtn.disabled = true;
+  });
+
+  // Global functions for buttons
+  window.setDueDate = function(days) {
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + days);
+    dueDateInput.value = dueDate.toISOString().split('T')[0];
+  };
+
+  window.setupMonthlyRent = function() {
+    if (leaseSelect.value) {
+      const selectedOption = leaseSelect.options[leaseSelect.selectedIndex];
+      const monthlyRent = selectedOption.dataset.monthlyRent;
+      
+      if (monthlyRent) {
+        rentAmountInput.value = monthlyRent;
+        lateFeeInput.value = '';
+        otherChargesInput.value = '';
+        setupCurrentMonthPeriod();
+        calculateTotal();
+      }
+    } else {
+      alert('Please select a lease first.');
+    }
+  };
+
+  window.setupWithLateFee = function() {
+    if (leaseSelect.value) {
+      setupMonthlyRent();
+      lateFeeInput.value = '50.00'; // Default late fee
+      calculateTotal();
+    } else {
+      alert('Please select a lease first.');
+    }
+  };
+
+  window.setDraftAndSubmit = function() {
+    // Add hidden input to mark as draft
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = 'saveAsDraft';
+    hiddenInput.value = 'true';
+    form.appendChild(hiddenInput);
+    
+    form.submit();
+  };
+});
+</script>
+
+<%- include('../partials/footer') %> 
