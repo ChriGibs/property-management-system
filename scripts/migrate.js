@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { sequelize } = require('../models');
+const { sequelize } = require('../src/models');
 
 async function migrate() {
   try {
@@ -9,34 +9,7 @@ async function migrate() {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully.');
     
-    // Create session table for express-session storage
-    try {
-      await sequelize.query(`
-        CREATE TABLE IF NOT EXISTS "session" (
-          "sid" varchar NOT NULL COLLATE "default",
-          "sess" json NOT NULL,
-          "expire" timestamp(6) NOT NULL
-        )
-        WITH (OIDS=FALSE);
-      `);
-      
-      // Try to add primary key if it doesn't exist
-      try {
-        await sequelize.query(`
-          ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid");
-        `);
-      } catch (pkError) {
-        // Primary key already exists, that's fine
-      }
-      
-      await sequelize.query(`
-        CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
-      `);
-      
-      console.log('✅ Session table created successfully.');
-    } catch (sessionError) {
-      console.log('⚠️  Session table setup error (may already exist):', sessionError.message);
-    }
+    // No SSR session table needed; SSR removed
     
     // Sync all models (create tables)
     await sequelize.sync({ force: false, alter: true });
