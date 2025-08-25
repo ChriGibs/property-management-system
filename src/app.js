@@ -6,9 +6,31 @@ const cors = require('cors');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { jsonErrorHandler } = require('./api/utils/errorMiddleware');
+const pinoHttp = require('pino-http');
+const crypto = require('crypto');
+let sentry = null;
+try { sentry = require('@sentry/node'); } catch (e) { /* ignore optional sentry */ }
 const { sequelize } = require('./models');
 
 const app = express();
+
+// Request IDs and logging
+app.use((req, res, next) => {
+  const rid = req.headers['x-request-id'] || crypto.randomUUID();
+  res.setHeader('x-request-id', rid);
+  req.id = rid;
+  next();
+});
+app.use(pinoHttp({
+  genReqId: (req) => req.id,
+  customLogLevel: (res, err) => err ? 'error' : 'info'
+}));
+
+// Optional Sentry
+if (process.env.SENTRY_DSN && sentry) {
+  sentry.init({ dsn: process.env.SENTRY_DSN, tracesSampleRate: 0.0 });
+  app.use(sentry.Handlers.requestHandler());
+}
 
 if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
@@ -67,6 +89,9 @@ app.get('/readyz', async (req, res) => {
 
 // API error handler
 app.use('/api', jsonErrorHandler);
+if (process.env.SENTRY_DSN && sentry) {
+  app.use(sentry.Handlers.errorHandler());
+}
 
 // 404
 app.use((req, res) => {
