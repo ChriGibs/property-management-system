@@ -23,7 +23,44 @@ app.use((req, res, next) => {
 });
 app.use(pinoHttp({
   genReqId: (req) => req.id,
-  customLogLevel: (res, err) => err ? 'error' : 'info'
+  customLogLevel: (res, err) => err ? 'error' : 'info',
+  redact: {
+    // remove sensitive headers entirely from logs
+    paths: [
+      'req.headers.cookie',
+      'req.headers.authorization',
+      'req.headers["x-csrf-token"]',
+      'res.headers["set-cookie"]'
+    ],
+    remove: true
+  },
+  serializers: {
+    req(req) {
+      return {
+        id: req.id,
+        method: req.method,
+        url: req.url,
+        headers: {
+          // only include minimal safe headers
+          'user-agent': req.headers['user-agent'],
+          'accept': req.headers['accept'],
+          'content-type': req.headers['content-type'],
+          'content-length': req.headers['content-length'],
+          'origin': req.headers['origin']
+        },
+        query: req.query
+      };
+    },
+    res(res) {
+      return {
+        statusCode: res.statusCode,
+        headers: {
+          'content-type': res.getHeader && res.getHeader('content-type'),
+          'content-length': res.getHeader && res.getHeader('content-length')
+        }
+      };
+    }
+  }
 }));
 
 // Optional Sentry
